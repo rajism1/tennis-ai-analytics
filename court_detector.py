@@ -29,10 +29,10 @@ class CourtDetector:
             self.set_pixel_corners(default_pixel_corners)
 
     def set_pixel_corners(self, pixel_corners):
-        """Sets pixel corners and computes the Homography matrix."""
+        """Sets pixel corners and computes the robust RANSAC Homography matrix."""
         self.pixel_corners = np.array(pixel_corners, dtype=np.float32)
-        # Compute Homography: pixel -> real court (meters)
-        self.H, _ = cv2.findHomography(self.pixel_corners, self.metric_corners)
+        # Compute Homography with RANSAC robust estimator: pixel -> real court (meters)
+        self.H, _ = cv2.findHomography(self.pixel_corners, self.metric_corners, cv2.RANSAC, 5.0)
         if self.H is not None:
             self.H_inv = np.linalg.inv(self.H)
 

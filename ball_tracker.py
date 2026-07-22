@@ -37,35 +37,64 @@ class BallTracker:
             self.timestamps.append(timestamp)
             
             # Map pixel -> court meters
-            court_m = (0.0, 0.0)
+            raw_court_m = (0.0, 0.0)
             if court_detector is not None:
-                court_m = court_detector.pixel_to_court(ball_pt_px)
-            self.trajectory_court.append(court_m)
+                raw_court_m = court_detector.pixel_to_court(ball_pt_px)
 
-            # Calculate physical speed (km/h) across recent frames
-            if len(self.trajectory_court) >= 3:
-                p1 = np.array(self.trajectory_court[-1])
-                p0 = np.array(self.trajectory_court[-3])
-                dt = self.timestamps[-1] - self.timestamps[-3]
+            # 1. Height Elevation Parallax Offset Adjustment
+            # Estimated height z reduces apparent projection error when ball is in air
+            est_z = max(0.0, float(1.8 - (ball_pt_px[1] % 100) / 80.0))
+            self.current_height_m = round(est_z, 2)
+            
+            # Parallax correction vector toward court center (5.48, 11.88)
+            cx, cy = 5.48, 11.885
+            dx, dy = raw_court_m[0] - cx, raw_court_m[1] - cy
+            # Correct elevation shift factor
+            corr_factor = max(0.85, 1.0 - (est_z * 0.04))
+            corrected_court_m = (cx + dx * corr_factor, cy + dy * corr_factor)
+
+            self.trajectory_court.append(corrected_court_m)
+
+            # 2. Moving Window Smoothing over Court Trajectory (5-frame window)
+            smooth_court_m = corrected_court_m
+            if len(self.trajectory_court) >= 5:
+                recent_pts = list(self.trajectory_court)[-5:]
+                avg_x = float(np.mean([p[0] for p in recent_pts]))
+                avg_y = float(np.mean([p[1] for p in recent_pts]))
+                smooth_court_m = (avg_x, avg_y)
+
+            # 3. Robust Velocity Calculation with Clamping (Max ~235 km/h)
+            if len(self.trajectory_court) >= 4 and len(self.timestamps) >= 4:
+                # 4-frame window distance delta
+                p1 = np.array(list(self.trajectory_court)[-1])
+                p0 = np.array(list(self.trajectory_court)[-4])
+                dt = self.timestamps[-1] - self.timestamps[-4]
                 
                 if dt > 0:
                     dist_meters = np.linalg.norm(p1 - p0)
-                    speed_ms = dist_meters / dt
-                    self.current_speed_kmh = float(speed_ms * 3.6) # Convert m/s -> km/h
+                    raw_speed_ms = dist_meters / dt
+                    calc_speed_kmh = float(raw_speed_ms * 3.6) # m/s -> km/h
+
+                    # Physical Limits: Cap max realistic speed to 235 km/h
+                    calc_speed_kmh = min(235.0, calc_speed_kmh)
+
+                    # Smooth speed transitions (max 35 km/h jump per frame)
+                    if hasattr(self, "prev_speed_kmh") and self.prev_speed_kmh > 0:
+                        max_jump = 35.0
+                        clamped_speed = np.clip(calc_speed_kmh, self.prev_speed_kmh - max_jump, self.prev_speed_kmh + max_jump)
+                        self.current_speed_kmh = float(0.4 * clamped_speed + 0.6 * self.prev_speed_kmh)
+                    else:
+                        self.current_speed_kmh = calc_speed_kmh
+
+                    self.prev_speed_kmh = self.current_speed_kmh
 
             # Bounce Detection Algorithm: Inflection point in Y trajectory (court space)
             if len(self.trajectory_court) >= 5:
                 y_coords = [pt[1] for pt in list(self.trajectory_court)[-5:]]
-                # Check for direction change in Y velocity (moving towards baseline then reversing or dropping sharply)
                 dy = np.diff(y_coords)
                 if len(dy) >= 3 and (dy[-2] > 0 and dy[-1] < 0): # Direction peak/inflection
                     self.is_bounce_frame = True
                     self.bounce_location_m = self.trajectory_court[-2]
-
-            # Parabolic height approximation (meters)
-            if len(self.trajectory_pixel) >= 3:
-                # Approximate height relative to net based on vertical pixel offset
-                self.current_height_m = max(0.1, float(1.8 - (ball_pt_px[1] % 100) / 80.0))
 
         return {
             "ball_pixel": ball_pt_px,

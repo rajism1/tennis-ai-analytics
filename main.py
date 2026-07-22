@@ -72,11 +72,14 @@ def run_tennis_pipeline(video_source, output_video_path=None, max_frames=None, d
         # 1. Court Detection & Homography
         court_detector.detect_court_lines(frame)
 
-        # 2. Player Detection & Tracking (YOLO11)
+        # 2. Player Detection & Initial Bounding Boxes
         players = player_tracker.detect_and_track(frame, court_detector)
 
         # 3. Pose Estimation (COCO 17 Keypoints)
         poses = pose_estimator.estimate_pose(frame, players)
+
+        # Refine player court coordinates using Pose Ankle Keypoints
+        players = player_tracker.detect_and_track(frame, court_detector, poses)
 
         # 4. Ball Tracking & Physics (Speed, Height, Bounce)
         ball_info = ball_tracker.track_ball(frame, frame_idx, court_detector, poses)
