@@ -1,0 +1,25 @@
+# Output directory and generated media
+output/
+*.mp4
+*.avi
+*.mov
+*.json
+*.csv
+*.db
+*.sqlite
+
+# Cache and environment files
+__pycache__/
+*.py[cod]
+*$py.class
+.matplotlib/
+.ultralytics/
+Ultralytics/
+.DS_Store
+.vscode/
+.idea/
+
+# YOLO weights
+*.pt
+*.onnx
+*.engine
