@@ -18,7 +18,7 @@ from event_detector import EventDetector
 from analytics_engine import AnalyticsEngine
 from config import OUTPUT_DIR
 
-def run_tennis_pipeline(video_source, output_video_path=None, max_frames=None, display=False, frame_stride=1):
+def run_tennis_pipeline(video_source, output_video_path=None, max_frames=None, display=False, frame_stride=1, court_corners=None):
     """
     Runs end-to-end tennis analytics on video source.
     """
@@ -43,6 +43,20 @@ def run_tennis_pipeline(video_source, output_video_path=None, max_frames=None, d
 
     # Initialize Modules
     court_detector    = CourtDetector()
+    if court_corners:
+        try:
+            pts = [float(v) for v in court_corners.split(",")]
+            if len(pts) == 8:
+                parsed_corners = [
+                    [pts[0], pts[1]], [pts[2], pts[3]],
+                    [pts[4], pts[5]], [pts[6], pts[7]]
+                ]
+                court_detector.set_pixel_corners(parsed_corners)
+                court_detector._corners_user_set = True
+                print(f"[CourtDetector] Loaded custom calibrated court corners: {parsed_corners}")
+        except Exception as e:
+            print(f"[CourtDetector] Warning: Could not parse --court-corners ({e})")
+
     player_tracker    = PlayerTracker()
     pose_estimator    = PoseEstimator()
     ball_tracker      = BallTracker(fps=fps)
@@ -137,7 +151,8 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str, default=os.path.join(OUTPUT_DIR, "output_analytics.mp4"), help="Path to output annotated video")
     parser.add_argument("--max-frames", type=int, default=None, help="Max frames to process")
     parser.add_argument("--frame-stride", type=int, default=1, help="Process every Nth frame (e.g. 2 for 2x speedup)")
+    parser.add_argument("--court-corners", type=str, default=None, help="Comma-separated 4 court corner pixel coords: x1,y1,x2,y2,x3,y3,x4,y4")
     parser.add_argument("--display", action="store_true", help="Display output window")
     args = parser.parse_args()
 
-    run_tennis_pipeline(args.video, args.output, args.max_frames, args.display, args.frame_stride)
+    run_tennis_pipeline(args.video, args.output, args.max_frames, args.display, args.frame_stride, args.court_corners)
