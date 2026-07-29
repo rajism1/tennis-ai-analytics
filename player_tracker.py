@@ -109,6 +109,16 @@ class PlayerTracker:
                 if court_detector is not None:
                     raw_court_m = court_detector.pixel_to_court(feet_px)
 
+                # Physical Net Boundary Constraint (Net is at Y = 11.885m)
+                # Player 1 is detected on top half of camera frame -> MUST be Far Court (Y <= 11.885m)
+                # Player 2 is detected on bottom half of camera frame -> MUST be Near Court (Y >= 11.885m)
+                if player_name == "Player 1" and raw_court_m[1] > 11.885:
+                    corr_y = max(0.5, 11.885 - abs(raw_court_m[1] - 11.885) * 0.35)
+                    raw_court_m = (raw_court_m[0], corr_y)
+                elif player_name == "Player 2" and raw_court_m[1] < 11.885:
+                    corr_y = min(23.2, 11.885 + abs(11.885 - raw_court_m[1]) * 0.35)
+                    raw_court_m = (raw_court_m[0], corr_y)
+
                 # Exponential Moving Average (EMA) Smoothing on Court Position (alpha = 0.35)
                 alpha = 0.35
                 if player_name in self.ema_positions:

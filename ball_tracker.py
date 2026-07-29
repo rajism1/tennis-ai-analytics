@@ -108,8 +108,8 @@ class BallTracker:
     def _detect_ball_blob(self, frame, player_poses=None):
         """
         Color/motion blob thresholding for tennis ball detection (Yellow-Green hue).
-        Can be upgraded to custom TrackNet CNN model inference.
         """
+        h, w, _ = frame.shape
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
         # Tennis ball yellow-green HSV range
@@ -117,12 +117,16 @@ class BallTracker:
         upper_yellow = np.array([55, 255, 255])
         
         mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+        
+        # Mask out top-left scoreboard zone (where score banner lives)
+        mask[:int(h * 0.35), :int(w * 0.28)] = 0
+        
         mask = cv2.GaussianBlur(mask, (5, 5), 0)
         
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         best_pt = None
-        min_size, max_size = 3, 25
+        min_size, max_size = 4, 25
         
         for cnt in contours:
             area = cv2.contourArea(cnt)
@@ -132,27 +136,23 @@ class BallTracker:
                     best_pt = (float(x), float(y))
                     break
 
-        # Fallback simulation if ball is fast/blurred
-        if best_pt is None and len(self.trajectory_pixel) > 0:
-            last_x, last_y = self.trajectory_pixel[-1]
-            # Smooth motion extrapolation
-            best_pt = (last_x + 3.0, last_y + (1.5 if (len(self.trajectory_pixel) % 20 < 10) else -1.5))
-        elif best_pt is None:
-            # Initial seed near center court
-            fh, fw, _ = frame.shape
-            best_pt = (fw * 0.5, fh * 0.45)
-
         return best_pt
 
     def draw_ball(self, frame, ball_info):
         """Draws ball marker, motion trail, and speed overlay."""
-        # Draw trajectory trail
+        # Draw trajectory trail (only for close consecutive frames)
         pts = list(self.trajectory_pixel)
         for i in range(1, len(pts)):
             if pts[i - 1] is not None and pts[i] is not None:
-                thickness = int(np.sqrt(15 / float(i + 1)) * 2)
-                cv2.line(frame, (int(pts[i - 1][0]), int(pts[i - 1][1])),
-                         (int(pts[i][0]), int(pts[i][1])), (0, 255, 255), thickness)
+                p1 = np.array(pts[i - 1])
+                p2 = np.array(pts[i])
+                dist = np.linalg.norm(p2 - p1)
+                
+                # Only draw line segment if frames are consecutive and distance < 70 pixels (no teleports/jumps across screen)
+                if dist < 70.0:
+                    thickness = max(1, int(np.sqrt(15 / float(i + 1)) * 2))
+                    cv2.line(frame, (int(pts[i - 1][0]), int(pts[i - 1][1])),
+                             (int(pts[i][0]), int(pts[i][1])), (0, 255, 255), thickness)
 
         if ball_info["ball_pixel"] is not None:
             bx, by = int(ball_info["ball_pixel"][0]), int(ball_info["ball_pixel"][1])
@@ -161,8 +161,9 @@ class BallTracker:
             cv2.circle(frame, (bx, by), 8, (0, 0, 0), 1)
 
             # Speed banner overlay
-            speed_txt = f"{ball_info['speed_kmh']} km/h | H: {ball_info['height_m']}m"
-            cv2.putText(frame, speed_txt, (bx + 12, by - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 2)
+            if ball_info['speed_kmh'] > 0:
+                speed_txt = f"{ball_info['speed_kmh']} km/h | H: {ball_info['height_m']}m"
+                cv2.putText(frame, speed_txt, (bx + 12, by - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 2)
 
         if ball_info["is_bounce"] and ball_info["ball_pixel"] is not None:
             bx, by = int(ball_info["ball_pixel"][0]), int(ball_info["ball_pixel"][1])
