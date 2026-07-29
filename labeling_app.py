@@ -43,8 +43,24 @@ class LabelingHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.export_verified_csv()
         elif self.path.startswith("/api/video"):
             self.stream_video()
+        elif self.path.startswith("/api/snapshot/"):
+            self.serve_snapshot()
         else:
             super().do_GET()
+
+    def serve_snapshot(self):
+        filename = os.path.basename(self.path)
+        snapshot_path = os.path.join(OUTPUT_DIR, "snapshots", filename)
+        if os.path.exists(snapshot_path):
+            with open(snapshot_path, "rb") as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header('Content-Type', 'image/jpeg')
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+        else:
+            self.send_error(404, "Snapshot not found")
 
     def do_POST(self):
         if self.path.startswith("/api/events"):

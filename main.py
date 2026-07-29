@@ -101,6 +101,14 @@ def run_tennis_pipeline(video_source, output_video_path=None, max_frames=None, d
         # 5. Event Detection & Stroke Classification
         event = event_detector.process_frame(frame_idx, players, ball_info, poses, stroke_classifier)
         if event is not None:
+            # Save frame snapshot image for frame-wise visual inspection gallery
+            snapshots_dir = os.path.join(OUTPUT_DIR, "snapshots")
+            os.makedirs(snapshots_dir, exist_ok=True)
+            snapshot_filename = f"snapshot_frame_{frame_idx:06d}.jpg"
+            snapshot_filepath = os.path.join(snapshots_dir, snapshot_filename)
+            cv2.imwrite(snapshot_filepath, frame)
+            
+            event["snapshot_filename"] = snapshot_filename
             analytics_engine.log_event(event)
 
         # 6. Visual Overlay Rendering

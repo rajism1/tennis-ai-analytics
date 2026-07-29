@@ -32,6 +32,27 @@ async function loadEvents() {
 
 // Setup Event Listeners
 function setupEventListeners() {
+  // View mode switcher
+  const vTableBtn = document.getElementById("view-table-btn");
+  const vGalleryBtn = document.getElementById("view-gallery-btn");
+  const vTableMode = document.getElementById("video-table-mode");
+  const vGalleryMode = document.getElementById("gallery-mode");
+
+  vTableBtn.addEventListener("click", () => {
+    vTableMode.style.display = "grid";
+    vGalleryMode.style.display = "none";
+    vTableBtn.classList.add("btn-primary");
+    vGalleryBtn.classList.remove("btn-primary");
+  });
+
+  vGalleryBtn.addEventListener("click", () => {
+    vTableMode.style.display = "none";
+    vGalleryMode.style.display = "block";
+    vGalleryBtn.classList.add("btn-primary");
+    vTableBtn.classList.remove("btn-primary");
+    renderGallery();
+  });
+
   // Video playback time update
   video.addEventListener("timeupdate", () => {
     const currentFrame = Math.round(video.currentTime * FPS);
@@ -51,9 +72,9 @@ function setupEventListeners() {
   document.getElementById("btn-next-5").addEventListener("click", () => stepFrame(5));
 
   // Filters
-  document.getElementById("filter-player").addEventListener("change", renderTable);
-  document.getElementById("filter-status").addEventListener("change", renderTable);
-  document.getElementById("search-input").addEventListener("input", renderTable);
+  document.getElementById("filter-player").addEventListener("change", () => { renderTable(); renderGallery(); });
+  document.getElementById("filter-status").addEventListener("change", () => { renderTable(); renderGallery(); });
+  document.getElementById("search-input").addEventListener("input", () => { renderTable(); renderGallery(); });
 
   // Verification Form Actions
   document.getElementById("btn-confirm-evt").addEventListener("click", confirmCurrentEvent);
@@ -115,29 +136,69 @@ function renderTable() {
   });
 }
 
-// Select Event Row & Jump Video
-function selectEvent(idx) {
-  if (idx < 0 || idx >= eventsData.length) return;
+// Render Gallery Cards
+function renderGallery() {
+  const grid = document.getElementById("gallery-grid");
+  if (!grid) return;
+  grid.innerHTML = "";
+
+  const filterPlayer = document.getElementById("filter-player").value;
+  const filterStatus = document.getElementById("filter-status").value;
+  const searchTxt = document.getElementById("search-input").value.toLowerCase();
+
+  eventsData.forEach((evt, idx) => {
+    const status = evt.status || "unverified";
+
+    if (filterPlayer !== "ALL" && evt.player !== filterPlayer) return;
+    if (filterStatus !== "ALL" && status !== filterStatus) return;
+    if (searchTxt && !JSON.stringify(evt).toLowerCase().includes(searchTxt)) return;
+
+    const card = document.createElement("div");
+    card.className = "gallery-card";
+
+    let badgeClass = "badge-unverified";
+    if (status === "confirmed") badgeClass = "badge-confirmed";
+    if (status === "corrected") badgeClass = "badge-corrected";
+
+    const snapshotImgSrc = evt.snapshot_filename 
+      ? `/api/snapshot/${evt.snapshot_filename}`
+      : `/api/video#t=${(evt.frame_idx/FPS).toFixed(2)}`;
+
+    card.innerHTML = `
+      <img src="${snapshotImgSrc}" alt="Frame ${evt.frame_idx}" onerror="this.src='https://via.placeholder.com/640x360/0f172a/38bdf8?text=Frame+${evt.frame_idx}';">
+      <div class="gallery-card-body">
+        <div class="gallery-card-header">
+          <span>Frame #${evt.frame_idx} (${evt.timestamp_sec ? evt.timestamp_sec.toFixed(2) + 's' : '0.0s'})</span>
+          <span class="badge ${badgeClass}">${status}</span>
+        </div>
+        <div class="gallery-card-details">
+          <div>Player: <strong style="color: ${evt.player === 'Player 1' ? '#f87171' : '#60a5fa'}">${evt.player}</strong></div>
+          <div>Event: <strong>${evt.event_type}</strong></div>
+          <div>Stroke: <strong>${evt.stroke}</strong></div>
+          <div>Speed: <strong>${evt.speed_kmh ? evt.speed_kmh.toFixed(1) + ' km/h' : '-'}</strong></div>
+          <div>Spin: <strong>${evt.spin || '-'}</strong></div>
+          <div>Result: <strong>${evt.result || 'In Play'}</strong></div>
+        </div>
+        <div class="gallery-card-actions">
+          <button class="btn btn-success" style="flex:1; padding:6px 8px; font-size:11px;" onclick="confirmGalleryEvent(${idx})">✅ Confirm</button>
+          <button class="btn btn-primary" style="flex:1; padding:6px 8px; font-size:11px;" onclick="selectAndInspect(${idx})">🔍 Inspect Video</button>
+        </div>
+      </div>
+    `;
+
+    grid.appendChild(card);
+  });
+}
+
+function confirmGalleryEvent(idx) {
   selectedEventIndex = idx;
+  confirmCurrentEvent();
+  renderGallery();
+}
 
-  const evt = eventsData[idx];
-  
-  // Seek video to frame_idx
-  const frame = evt.frame_idx || 0;
-  video.currentTime = frame / FPS;
-  video.pause();
-
-  // Populate Edit Form
-  document.getElementById("edit-player").value = evt.player || "Player 1";
-  document.getElementById("edit-event-type").value = evt.event_type || "Hit";
-  document.getElementById("edit-stroke").value = evt.stroke || "Forehand";
-  document.getElementById("edit-spin").value = evt.spin || "Topspin";
-  document.getElementById("edit-result").value = evt.result || "In Play";
-
-  // Update Video Overlay Badge
-  document.getElementById("overlay-event-text").innerText = `${evt.player} - ${evt.event_type} (${evt.stroke})`;
-
-  renderTable();
+function selectAndInspect(idx) {
+  document.getElementById("view-table-btn").click();
+  selectEvent(idx);
 }
 
 // Confirm Event as 100% Correct

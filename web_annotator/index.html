@@ -15,6 +15,10 @@
       <span class="logo-icon">🎾</span>
       <h1>Tennis AI - Data Verification & Labeling Dashboard</h1>
     </div>
+    <div class="view-switcher">
+      <button class="btn btn-primary" id="view-table-btn">📹 Video & Table View</button>
+      <button class="btn" id="view-gallery-btn">🖼️ Frame-Wise Shot Gallery</button>
+    </div>
     <div class="header-stats">
       <div class="stat-pill">
         <span>Verified:</span>
@@ -50,9 +54,8 @@
     </div>
   </div>
 
-  <!-- Main Content Layout -->
-  <div class="container">
-
+  <!-- Main Content Layout (Video & Table Mode) -->
+  <div class="container" id="video-table-mode">
     <!-- Left Column: Video Player & Frame Controls -->
     <div class="card">
       <div class="card-title">
@@ -193,6 +196,19 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- Frame-Wise Shot Gallery View Mode -->
+  <div class="gallery-container" id="gallery-mode" style="display: none; padding: 0 24px 24px 24px;">
+    <div class="card">
+      <div class="card-title">
+        <span>🖼️ Frame-Wise Event Snapshot Gallery</span>
+        <span style="font-size: 13px; color: var(--text-muted);">Inspect every detected shot side-by-side with its exact visual frame snapshot</span>
+      </div>
+      <div class="gallery-grid" id="gallery-grid">
+        <!-- Frame Snapshot Cards rendered dynamically -->
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>
