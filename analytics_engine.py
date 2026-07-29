@@ -8,6 +8,7 @@ import csv
 import os
 import sqlite3
 import pandas as pd
+import numpy as np
 from config import OUTPUT_DIR
 
 class AnalyticsEngine:

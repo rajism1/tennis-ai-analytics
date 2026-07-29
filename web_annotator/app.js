@@ -337,9 +337,16 @@ function updateMetrics() {
 // Fetch and Render SwingVision Player Analytics
 async function loadPlayerAnalytics(playerId) {
   try {
-    const res = await fetch(`/api/player_analytics?player=${encodeURIComponent(playerId)}`);
-    const data = await res.json();
-    renderPlayerAnalyticsUI(data);
+    const resP1 = await fetch(`/api/player_analytics?player=Player%201`);
+    const dataP1 = await resP1.json();
+    document.getElementById("p1-dist-txt").innerText = `👟 ${dataP1.distance_feet} ft | ${dataP1.total_shots} shots`;
+
+    const resP2 = await fetch(`/api/player_analytics?player=Player%202`);
+    const dataP2 = await resP2.json();
+    document.getElementById("p2-dist-txt").innerText = `👟 ${dataP2.distance_feet} ft | ${dataP2.total_shots} shots`;
+
+    const targetData = playerId === "Player 2" ? dataP2 : dataP1;
+    renderPlayerAnalyticsUI(targetData);
   } catch (err) {
     console.error("Error loading player analytics:", err);
   }
@@ -358,62 +365,62 @@ function renderPlayerAnalyticsUI(data) {
 
   // 2. Shot Spin Distribution
   const spin = data.spin_distribution || {};
-  document.getElementById("bar-flat").style.width = `${spin.flat_pct || 0}%`;
-  document.getElementById("lbl-flat").innerText = `${spin.flat_pct || 0}%`;
-  document.getElementById("bar-topspin").style.width = `${spin.topspin_pct || 0}%`;
-  document.getElementById("lbl-topspin").innerText = `${spin.topspin_pct || 0}%`;
-  document.getElementById("bar-slice").style.width = `${spin.slice_pct || 0}%`;
-  document.getElementById("lbl-slice").innerText = `${spin.slice_pct || 0}%`;
+  document.getElementById("bar-flat").style.width = `${spin.flat_pct ?? 0}%`;
+  document.getElementById("lbl-flat").innerText = `${spin.flat_pct ?? 0}%`;
+  document.getElementById("bar-topspin").style.width = `${spin.topspin_pct ?? 0}%`;
+  document.getElementById("lbl-topspin").innerText = `${spin.topspin_pct ?? 0}%`;
+  document.getElementById("bar-slice").style.width = `${spin.slice_pct ?? 0}%`;
+  document.getElementById("lbl-slice").innerText = `${spin.slice_pct ?? 0}%`;
 
   // 3. Ball Speed & Histogram
   const speed = data.ball_speed || {};
-  document.getElementById("val-avg-speed").innerText = `${speed.avg_mph || 49} MPH`;
-  document.getElementById("val-max-speed").innerText = `${speed.max_mph || 99} MPH`;
+  document.getElementById("val-avg-speed").innerText = `${speed.avg_mph ?? 0} MPH`;
+  document.getElementById("val-max-speed").innerText = `${speed.max_mph ?? 0} MPH`;
 
   const histContainer = document.getElementById("speed-histogram-bars");
   histContainer.innerHTML = "";
   const history = speed.history || [];
   
-  // Render up to 40 shot speed bars
-  const displayShots = history.length > 0 ? history.slice(-40) : Array.from({length: 30}, () => ({speed_mph: Math.floor(Math.random() * 40) + 35}));
+  // Render up to 50 real shot speed bars from the video
+  const displayShots = history.length > 0 ? history.slice(-50) : [];
   const maxMph = Math.max(...displayShots.map(s => s.speed_mph), 100);
 
   displayShots.forEach(s => {
     const bar = document.createElement("div");
     bar.className = "hist-bar";
-    const hPct = Math.min(100, Math.max(10, (s.speed_mph / maxMph) * 100));
+    const hPct = Math.min(100, Math.max(8, (s.speed_mph / maxMph) * 100));
     bar.style.height = `${hPct}%`;
-    bar.title = `${s.speed_mph} MPH`;
+    bar.title = `Frame ${s.frame}: ${s.speed_mph} MPH`;
     histContainer.appendChild(bar);
   });
 
   // 4. Overall Performance Stats
   const overall = data.overall || {};
-  document.getElementById("val-shots-in").innerText = `${overall.shots_in_pct || 78}%`;
-  document.getElementById("val-shots-per-hr").innerText = `${overall.shots_per_hour || 361}`;
-  document.getElementById("val-longest-rally").innerText = `${overall.longest_rally || 15}`;
-  document.getElementById("val-rallies-5").innerText = `${overall.rallies_above_5_pct || 24}%`;
+  document.getElementById("val-shots-in").innerText = `${overall.shots_in_pct ?? 0}%`;
+  document.getElementById("val-shots-per-hr").innerText = `${overall.shots_per_hour ?? 0}`;
+  document.getElementById("val-longest-rally").innerText = `${overall.longest_rally ?? 0}`;
+  document.getElementById("val-rallies-5").innerText = `${overall.rallies_above_5_pct ?? 0}%`;
 
   // 5. Serves Ad vs Deuce Split
   const serves = data.serves || {};
-  document.getElementById("val-serves-ad-in").innerText = `${serves.ad_serves_in_pct || 42}%`;
-  document.getElementById("val-serves-deuce-in").innerText = `${serves.deuce_serves_in_pct || 33}%`;
-  document.getElementById("val-serve-spd-ad").innerText = `${serves.ad_avg_speed_mph || 64} mph`;
-  document.getElementById("val-serve-spd-deuce").innerText = `${serves.deuce_avg_speed_mph || 59} mph`;
+  document.getElementById("val-serves-ad-in").innerText = `${serves.ad_serves_in_pct ?? 0}%`;
+  document.getElementById("val-serves-deuce-in").innerText = `${serves.deuce_serves_in_pct ?? 0}%`;
+  document.getElementById("val-serve-spd-ad").innerText = `${serves.ad_avg_speed_mph ?? 0} mph`;
+  document.getElementById("val-serve-spd-deuce").innerText = `${serves.deuce_avg_speed_mph ?? 0} mph`;
 
   // 6. Groundstrokes
   const gs = data.groundstrokes || {};
-  document.getElementById("val-fh-in").innerText = `${gs.forehands_in_pct || 92}%`;
-  document.getElementById("val-bh-in").innerText = `${gs.backhands_in_pct || 85}%`;
-  document.getElementById("val-fh-speed").innerText = `${gs.avg_forehand_speed_mph || 46} mph`;
-  document.getElementById("val-bh-speed").innerText = `${gs.avg_backhand_speed_mph || 42} mph`;
+  document.getElementById("val-fh-in").innerText = `${gs.forehands_in_pct ?? 0}%`;
+  document.getElementById("val-bh-in").innerText = `${gs.backhands_in_pct ?? 0}%`;
+  document.getElementById("val-fh-speed").innerText = `${gs.avg_forehand_speed_mph ?? 0} mph`;
+  document.getElementById("val-bh-speed").innerText = `${gs.avg_backhand_speed_mph ?? 0} mph`;
 
   // 7. Shot Type Breakdown
   const dist = data.shot_distribution || {};
-  document.getElementById("donut-center-cnt").innerHTML = `${data.total_shots || 121}<br>Shots`;
-  document.getElementById("pct-fh").innerText = `${dist.Forehand || 55.4}%`;
-  document.getElementById("pct-serve").innerText = `${dist.Serve || 24.0}%`;
-  document.getElementById("pct-bh").innerText = `${dist.Backhand || 16.5}%`;
-  document.getElementById("pct-volley").innerText = `${dist.Volley || 2.5}%`;
-  document.getElementById("pct-slice").innerText = `${dist.Slice || 1.6}%`;
+  document.getElementById("donut-center-cnt").innerHTML = `${data.total_shots ?? 0}<br>Shots`;
+  document.getElementById("pct-fh").innerText = `${dist.Forehand ?? 0}%`;
+  document.getElementById("pct-serve").innerText = `${dist.Serve ?? 0}%`;
+  document.getElementById("pct-bh").innerText = `${dist.Backhand ?? 0}%`;
+  document.getElementById("pct-volley").innerText = `${dist.Volley ?? 0}%`;
+  document.getElementById("pct-slice").innerText = `${dist.Slice ?? 0}%`;
 }
