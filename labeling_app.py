@@ -12,6 +12,7 @@ import sys
 import re
 import argparse
 import pandas as pd
+from analytics_engine import AnalyticsEngine
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(BASE_DIR, "web_annotator")
