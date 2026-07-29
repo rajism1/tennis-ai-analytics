@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tennis AI - Event Labeling & Accuracy Verification</title>
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="app.js?v=3" defer></script>
+  <script src="app.js?v=4" defer></script>
 </head>
 <body>
 
@@ -34,8 +34,51 @@
     </div>
   </header>
 
+  <!-- Pipeline Completion & Steps Indicator Banner -->
+  <div style="padding: 16px 24px 0 24px;">
+    <div class="pipeline-stepper-card">
+      <div class="stepper-title">
+        <span>⚙️ Tennis AI Pipeline Processing & Analytics Status</span>
+        <span class="status-badge ready" id="pipeline-ready-badge">✅ ALL ANALYTICS READY</span>
+      </div>
+      <div class="stepper-steps">
+        <div class="step-item complete">
+          <span class="step-icon">1</span>
+          <div class="step-info">
+            <span class="step-name">Video Loaded</span>
+            <span class="step-desc">1080p @ 30 FPS</span>
+          </div>
+        </div>
+        <div class="step-divider complete"></div>
+        <div class="step-item complete">
+          <span class="step-icon">2</span>
+          <div class="step-info">
+            <span class="step-name">Player Detection & Pose</span>
+            <span class="step-desc">5,136 Frames (MPS GPU)</span>
+          </div>
+        </div>
+        <div class="step-divider complete"></div>
+        <div class="step-item complete">
+          <span class="step-icon">3</span>
+          <div class="step-info">
+            <span class="step-name">Ball & Court Tracking</span>
+            <span class="step-desc">986 Events Extracted</span>
+          </div>
+        </div>
+        <div class="step-divider complete"></div>
+        <div class="step-item complete">
+          <span class="step-icon">4</span>
+          <div class="step-info">
+            <span class="step-name">Player Performance Analytics</span>
+            <span class="step-desc">SwingVision Engine Ready</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Metrics Grid -->
-  <div style="padding: 24px 24px 0 24px;">
+  <div style="padding: 16px 24px 0 24px;">
     <div class="metrics-grid">
       <div class="metric-card">
         <span class="metric-title">TOTAL EVENTS</span>
@@ -56,9 +99,9 @@
     </div>
   </div>
 
-  <!-- Main Content Layout (Video & Table Mode) -->
+  <!-- Mode 1: Video & Table Layout -->
   <div class="container" id="video-table-mode">
-    <!-- Left Column: Video Player & Frame Controls -->
+    <!-- Left Column: Video Player & Controls -->
     <div class="card">
       <div class="card-title">
         <span>📹 Frame Video Inspector</span>
@@ -75,7 +118,7 @@
         </div>
       </div>
 
-      <!-- Frame Step & Scrub Controls -->
+      <!-- Controls -->
       <div class="player-controls">
         <div class="btn-group">
           <button class="btn" id="btn-prev-5">« -5 Frames</button>
@@ -87,13 +130,14 @@
         <span class="scrub-info" id="scrub-time">00:00.00</span>
       </div>
 
-      <!-- Event Edit Panel -->
+      <!-- Edit Panel -->
       <div class="edit-panel" id="edit-form-panel">
+        <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--text-main);">✏️ Edit Detected Event</h3>
         <div class="form-group">
           <label>Player</label>
           <select id="edit-player">
-            <option value="Player 1">Player 1</option>
-            <option value="Player 2">Player 2</option>
+            <option value="Player 1">Player 1 (Top / Far Court)</option>
+            <option value="Player 2">Player 2 (Bottom / Near Court)</option>
           </select>
         </div>
         <div class="form-group">
@@ -150,17 +194,15 @@
           <button class="btn btn-primary" id="btn-save-evt">💾 Save Correction</button>
         </div>
       </div>
-
     </div>
 
-    <!-- Right Column: Events Data Table -->
+    <!-- Right Column: Data Table -->
     <div class="card">
       <div class="card-title">
         <span>📋 Detected Events Telemetry</span>
         <button class="btn" id="btn-add-evt">➕ Add Event at Frame</button>
       </div>
 
-      <!-- Filters -->
       <div class="filter-bar">
         <select id="filter-player">
           <option value="ALL">All Players</option>
@@ -176,7 +218,6 @@
         <input type="text" id="search-input" placeholder="Search event..." style="flex:1;">
       </div>
 
-      <!-- Table Container -->
       <div class="table-container">
         <table>
           <thead>
@@ -192,15 +233,25 @@
             </tr>
           </thead>
           <tbody id="events-table-body">
-            <!-- Event rows inserted dynamically -->
           </tbody>
         </table>
       </div>
     </div>
-
   </div>
 
-  <!-- Player Performance Analytics View Mode (SwingVision Style) -->
+  <!-- Mode 2: Frame-Wise Shot Gallery -->
+  <div class="gallery-container" id="gallery-mode" style="display: none; padding: 0 24px 24px 24px;">
+    <div class="card">
+      <div class="card-title">
+        <span>🖼️ Frame-Wise Event Snapshot Gallery</span>
+        <span style="font-size: 13px; color: var(--text-muted);">Inspect every detected shot side-by-side with its visual frame snapshot</span>
+      </div>
+      <div class="gallery-grid" id="gallery-grid">
+      </div>
+    </div>
+  </div>
+
+  <!-- Mode 3: Player Performance Analytics View Mode (SwingVision Style) -->
   <div class="analytics-container" id="analytics-mode" style="display: none; padding: 0 24px 24px 24px;">
     <!-- Player Selection Tabs -->
     <div class="player-tab-switcher">
@@ -248,7 +299,6 @@
           <span class="sv-sub-stat">Avg: <strong id="val-avg-speed">49 MPH</strong> &nbsp;|&nbsp; Max: <strong id="val-max-speed">99 MPH</strong></span>
         </div>
         <div class="speed-histogram" id="speed-histogram-bars">
-          <!-- Histogram bars inserted dynamically -->
         </div>
       </div>
 
