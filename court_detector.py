@@ -62,12 +62,14 @@ class CourtDetector:
 
         if lines is not None:
             for line in lines:
-                x1, y1, x2, y2 = line[0]
-                angle = abs(np.degrees(np.arctan2(y2 - y1, x2 - x1)))
-                if angle < 25 or angle > 155:
-                    horizontal_lines.append((x1, y1, x2, y2))
-                elif 35 < angle < 145:
-                    vertical_lines.append((x1, y1, x2, y2))
+                l = line[0] if (isinstance(line, np.ndarray) and line.ndim > 0 and len(line) == 1) else line
+                if len(l) == 4:
+                    x1, y1, x2, y2 = int(l[0]), int(l[1]), int(l[2]), int(l[3])
+                    angle = abs(np.degrees(np.arctan2(y2 - y1, x2 - x1)))
+                    if angle < 25 or angle > 155:
+                        horizontal_lines.append((x1, y1, x2, y2))
+                    elif 35 < angle < 145:
+                        vertical_lines.append((x1, y1, x2, y2))
 
         # Sort horizontal lines by Y (top baseline vs bottom baseline)
         horizontal_lines.sort(key=lambda l: (l[1] + l[3]) / 2.0)
