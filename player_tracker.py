@@ -53,7 +53,7 @@ class PlayerTracker:
             if getattr(self, "use_track", True):
                 try:
                     # Try default Ultralytics tracking with hardware acceleration
-                    results = self.model.track(frame, classes=[0], conf=self.conf_thresh, device=self.device, persist=True, verbose=False)
+                    results = self.model.track(frame, classes=[0], conf=self.conf_thresh, iou=0.5, imgsz=640, device=self.device, persist=True, verbose=False)
                     if len(results) > 0 and results[0].boxes is not None:
                         boxes = results[0].boxes
                         for box in boxes:
@@ -62,7 +62,7 @@ class PlayerTracker:
                             detected_boxes.append((x1, y1, x2, y2, conf))
                 except Exception as e:
                     self.use_track = False
-                    results = self.model.predict(frame, classes=[0], conf=self.conf_thresh, device=self.device, verbose=False)
+                    results = self.model.predict(frame, classes=[0], conf=self.conf_thresh, iou=0.5, imgsz=640, device=self.device, verbose=False)
                     if len(results) > 0 and results[0].boxes is not None:
                         boxes = results[0].boxes
                         for box in boxes:
@@ -70,7 +70,7 @@ class PlayerTracker:
                             conf = float(box.conf[0].cpu().numpy())
                             detected_boxes.append((x1, y1, x2, y2, conf))
             else:
-                results = self.model.predict(frame, classes=[0], conf=self.conf_thresh, device=self.device, verbose=False)
+                results = self.model.predict(frame, classes=[0], conf=self.conf_thresh, iou=0.5, imgsz=640, device=self.device, verbose=False)
                 if len(results) > 0 and results[0].boxes is not None:
                     boxes = results[0].boxes
                     for box in boxes:

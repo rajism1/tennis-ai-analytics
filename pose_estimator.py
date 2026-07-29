@@ -54,7 +54,7 @@ class PoseEstimator:
         poses = {}
         
         if self.model is not None:
-            results = self.model(frame, device=self.device, verbose=False)
+            results = self.model(frame, imgsz=640, device=self.device, verbose=False)
             if len(results) > 0 and results[0].keypoints is not None:
                 kpts_data = results[0].keypoints.xy.cpu().numpy() # [N, 17, 2]
                 
