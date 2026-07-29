@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tennis AI - Event Labeling & Accuracy Verification</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-group">
+      <span class="logo-icon">🎾</span>
+      <h1>Tennis AI - Data Verification & Labeling Dashboard</h1>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill">
+        <span>Verified:</span>
+        <span class="stat-value" id="hdr-verified-count">0 / 0</span>
+      </div>
+      <div class="stat-pill">
+        <span>Accuracy Score:</span>
+        <span class="stat-value" id="hdr-accuracy-pct">100%</span>
+      </div>
+      <button class="btn btn-success" id="btn-export-csv">💾 Export Verified CSV</button>
+    </div>
+  </header>
+
+  <!-- Metrics Grid -->
+  <div style="padding: 24px 24px 0 24px;">
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-title">TOTAL EVENTS</span>
+        <span class="metric-val" id="metric-total">0</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-title">CONFIRMED (CORRECT)</span>
+        <span class="metric-val" style="color: var(--accent-success);" id="metric-confirmed">0</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-title">CORRECTED / EDITED</span>
+        <span class="metric-val" style="color: var(--accent-warning);" id="metric-corrected">0</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-title">ALGORITHM ACCURACY</span>
+        <span class="metric-val" style="color: var(--accent-primary);" id="metric-accuracy">0.0%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Layout -->
+  <div class="container">
+
+    <!-- Left Column: Video Player & Frame Controls -->
+    <div class="card">
+      <div class="card-title">
+        <span>📹 Frame Video Inspector</span>
+        <span id="current-frame-badge" style="font-family: monospace; font-size: 14px; color: var(--accent-primary);">Frame: 0</span>
+      </div>
+
+      <div class="video-wrapper">
+        <video id="match-video" controls preload="auto">
+          <source src="/api/video" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-overlay-badge" id="video-overlay">
+          <span id="overlay-event-text">No Event Selected</span>
+        </div>
+      </div>
+
+      <!-- Frame Step & Scrub Controls -->
+      <div class="player-controls">
+        <div class="btn-group">
+          <button class="btn" id="btn-prev-5">« -5 Frames</button>
+          <button class="btn" id="btn-prev-1">‹ -1 Frame</button>
+          <button class="btn btn-primary" id="btn-play-pause">▶ Play / Pause</button>
+          <button class="btn" id="btn-next-1">+1 Frame ›</button>
+          <button class="btn" id="btn-next-5">+5 Frames »</button>
+        </div>
+        <span class="scrub-info" id="scrub-time">00:00.00</span>
+      </div>
+
+      <!-- Event Edit Panel -->
+      <div class="edit-panel" id="edit-form-panel">
+        <div class="form-group">
+          <label>Player</label>
+          <select id="edit-player">
+            <option value="Player 1">Player 1</option>
+            <option value="Player 2">Player 2</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Event Type</label>
+          <select id="edit-event-type">
+            <option value="Serve">Serve</option>
+            <option value="Hit">Hit</option>
+            <option value="Bounce">Bounce</option>
+            <option value="Winner">Winner</option>
+            <option value="Net">Net</option>
+            <option value="Fault">Fault</option>
+            <option value="Double Fault">Double Fault</option>
+            <option value="Ace">Ace</option>
+            <option value="Out">Out</option>
+            <option value="Rally End">Rally End</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Stroke</label>
+          <select id="edit-stroke">
+            <option value="Serve">Serve</option>
+            <option value="Forehand">Forehand</option>
+            <option value="Backhand">Backhand</option>
+            <option value="Volley">Volley</option>
+            <option value="Slice">Slice</option>
+            <option value="Drop">Drop</option>
+            <option value="Smash">Smash</option>
+            <option value="Lob">Lob</option>
+            <option value="Bounce">Bounce</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Spin</label>
+          <select id="edit-spin">
+            <option value="Topspin">Topspin</option>
+            <option value="Flat">Flat</option>
+            <option value="Backspin">Backspin</option>
+            <option value="None">None</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Result</label>
+          <select id="edit-result">
+            <option value="In Play">In Play</option>
+            <option value="Winner">Winner</option>
+            <option value="Out">Out</option>
+            <option value="Fault">Fault</option>
+          </select>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-danger" id="btn-delete-evt">🗑️ Delete</button>
+          <button class="btn btn-success" id="btn-confirm-evt">✅ Confirm Correct</button>
+          <button class="btn btn-primary" id="btn-save-evt">💾 Save Correction</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Events Data Table -->
+    <div class="card">
+      <div class="card-title">
+        <span>📋 Detected Events Telemetry</span>
+        <button class="btn" id="btn-add-evt">➕ Add Event at Frame</button>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <select id="filter-player">
+          <option value="ALL">All Players</option>
+          <option value="Player 1">Player 1</option>
+          <option value="Player 2">Player 2</option>
+        </select>
+        <select id="filter-status">
+          <option value="ALL">All Statuses</option>
+          <option value="unverified">Unverified</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="corrected">Corrected</option>
+        </select>
+        <input type="text" id="search-input" placeholder="Search event..." style="flex:1;">
+      </div>
+
+      <!-- Table Container -->
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Frame</th>
+              <th>Time</th>
+              <th>Player</th>
+              <th>Event</th>
+              <th>Stroke</th>
+              <th>Speed</th>
+              <th>Spin</th>
+            </tr>
+          </thead>
+          <tbody id="events-table-body">
+            <!-- Event rows inserted dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
