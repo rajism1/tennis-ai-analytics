@@ -48,7 +48,15 @@ class LabelingHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith("/api/snapshot/"):
             self.serve_snapshot()
         else:
+            # Send cache control headers to prevent stale browser JS/CSS caching
+            self.send_response(200) if self.path != "/" else None
             super().do_GET()
+
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
 
     def send_player_analytics(self):
         # Extract player parameter if provided: /api/player_analytics?player=Player%201

@@ -7,6 +7,7 @@ const FPS = 59.0; // Raw video FPS
 
 document.addEventListener("DOMContentLoaded", () => {
   loadEvents();
+  loadPlayerAnalytics("Player 1");
   setupEventListeners();
 });
 
