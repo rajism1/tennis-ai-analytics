@@ -13,11 +13,12 @@
   <header>
     <div class="logo-group">
       <span class="logo-icon">🎾</span>
-      <h1>Tennis AI - Data Verification & Labeling Dashboard</h1>
+      <h1>Tennis AI - Data Verification & Performance Analytics</h1>
     </div>
     <div class="view-switcher">
-      <button class="btn btn-primary" id="view-table-btn">📹 Video & Table View</button>
-      <button class="btn" id="view-gallery-btn">🖼️ Frame-Wise Shot Gallery</button>
+      <button class="btn btn-primary" id="view-table-btn">📹 Video & Table</button>
+      <button class="btn" id="view-gallery-btn">🖼️ Shot Gallery</button>
+      <button class="btn" id="view-analytics-btn">📊 Player Analytics</button>
     </div>
     <div class="header-stats">
       <div class="stat-pill">
@@ -198,16 +199,142 @@
 
   </div>
 
-  <!-- Frame-Wise Shot Gallery View Mode -->
-  <div class="gallery-container" id="gallery-mode" style="display: none; padding: 0 24px 24px 24px;">
-    <div class="card">
-      <div class="card-title">
-        <span>🖼️ Frame-Wise Event Snapshot Gallery</span>
-        <span style="font-size: 13px; color: var(--text-muted);">Inspect every detected shot side-by-side with its exact visual frame snapshot</span>
+  <!-- Player Performance Analytics View Mode (SwingVision Style) -->
+  <div class="analytics-container" id="analytics-mode" style="display: none; padding: 0 24px 24px 24px;">
+    <!-- Player Selection Tabs -->
+    <div class="player-tab-switcher">
+      <button class="player-tab active" id="tab-p1">
+        <span class="player-avatar">AM</span>
+        <div class="player-tab-info">
+          <span class="player-tab-name" id="p1-name-txt">Player 1 (Near)</span>
+          <span class="player-tab-dist" id="p1-dist-txt">👟 716 ft | 134 shots</span>
+        </div>
+      </button>
+      <button class="player-tab" id="tab-p2">
+        <span class="player-avatar alt">OP</span>
+        <div class="player-tab-info">
+          <span class="player-tab-name" id="p2-name-txt">Player 2 (Opponent)</span>
+          <span class="player-tab-dist" id="p2-dist-txt">👟 847 ft | 123 shots</span>
+        </div>
+      </button>
+    </div>
+
+    <h2 class="section-heading"><span id="active-player-title">Player 1</span>'s Performance Analytics</h2>
+
+    <!-- SwingVision Layout Grid -->
+    <div class="sv-grid">
+      
+      <!-- Card 1: Shot Spin Distribution -->
+      <div class="sv-card">
+        <div class="sv-card-title">Shot Spin Distribution</div>
+        <div class="spin-progress-bar">
+          <div class="spin-segment spin-flat" id="bar-flat" style="width: 43%;">
+            <span>Flat<br><strong id="lbl-flat">43.0%</strong></span>
+          </div>
+          <div class="spin-segment spin-topspin" id="bar-topspin" style="width: 47.1%;">
+            <span>Topspin<br><strong id="lbl-topspin">47.1%</strong></span>
+          </div>
+          <div class="spin-segment spin-slice" id="bar-slice" style="width: 9.9%;">
+            <span>Slice<br><strong id="lbl-slice">9.9%</strong></span>
+          </div>
+        </div>
       </div>
-      <div class="gallery-grid" id="gallery-grid">
-        <!-- Frame Snapshot Cards rendered dynamically -->
+
+      <!-- Card 2: Ball Speed Chart -->
+      <div class="sv-card">
+        <div class="sv-card-title">
+          <span>Ball Speed</span>
+          <span class="sv-sub-stat">Avg: <strong id="val-avg-speed">49 MPH</strong> &nbsp;|&nbsp; Max: <strong id="val-max-speed">99 MPH</strong></span>
+        </div>
+        <div class="speed-histogram" id="speed-histogram-bars">
+          <!-- Histogram bars inserted dynamically -->
+        </div>
       </div>
+
+      <!-- Card 3: Overall Performance -->
+      <div class="sv-card">
+        <div class="sv-card-title">Overall Performance</div>
+        <div class="sv-stats-2x2">
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-shots-in">78%</span>
+            <span class="sv-stat-lbl">Shots In</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-shots-per-hr">361</span>
+            <span class="sv-stat-lbl">Shots Per Hour</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-longest-rally">15</span>
+            <span class="sv-stat-lbl">Longest Rally</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-rallies-5">24%</span>
+            <span class="sv-stat-lbl">Rallies Above 5 Shots</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 4: Serves Ad vs Deuce -->
+      <div class="sv-card">
+        <div class="sv-card-title">Serves (Ad vs Deuce Court)</div>
+        <div class="sv-stats-2x2">
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-serves-ad-in">42%</span>
+            <span class="sv-stat-lbl">Serves In (Ad)</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-serves-deuce-in">33%</span>
+            <span class="sv-stat-lbl">Serves In (Deuce)</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-serve-spd-ad">64 mph</span>
+            <span class="sv-stat-lbl">Avg Serve Speed (Ad)</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-serve-spd-deuce">59 mph</span>
+            <span class="sv-stat-lbl">Avg Serve Speed (Deuce)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 5: Groundstrokes -->
+      <div class="sv-card">
+        <div class="sv-card-title">Groundstrokes</div>
+        <div class="sv-stats-2x2">
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-fh-in">92%</span>
+            <span class="sv-stat-lbl">Forehands In</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-bh-in">85%</span>
+            <span class="sv-stat-lbl">Backhands In</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-fh-speed">46 mph</span>
+            <span class="sv-stat-lbl">Avg Forehand Speed</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-bh-speed">42 mph</span>
+            <span class="sv-stat-lbl">Avg Backhand Speed</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 6: Shot Type Distribution Donut -->
+      <div class="sv-card">
+        <div class="sv-card-title">Shot Type Breakdown</div>
+        <div class="shot-dist-wrapper">
+          <div class="donut-center" id="donut-center-cnt">121<br>Shots</div>
+          <ul class="donut-legend" id="donut-legend-list">
+            <li><span class="dot" style="background:#22c55e;"></span> Forehand: <strong id="pct-fh">55.4%</strong></li>
+            <li><span class="dot" style="background:#38bdf8;"></span> Serve: <strong id="pct-serve">24.0%</strong></li>
+            <li><span class="dot" style="background:#f97316;"></span> Backhand: <strong id="pct-bh">16.5%</strong></li>
+            <li><span class="dot" style="background:#eab308;"></span> Volley: <strong id="pct-volley">2.5%</strong></li>
+            <li><span class="dot" style="background:#a855f7;"></span> Slice: <strong id="pct-slice">1.6%</strong></li>
+          </ul>
+        </div>
+      </div>
+
     </div>
   </div>
 

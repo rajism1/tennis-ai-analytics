@@ -418,9 +418,211 @@ tr.active-row {
   color: var(--text-muted);
 }
 
-.gallery-card-actions {
+/* SwingVision Player Analytics Layout */
+.player-tab-switcher {
   display: flex;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 16px;
+  margin-bottom: 24px;
 }
+
+.player-tab {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 30px;
+  padding: 8px 20px 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: all 0.2s ease;
+}
+
+.player-tab.active {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--accent-primary);
+}
+
+.player-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--accent-primary);
+}
+
+.player-avatar.alt {
+  color: #f43f5e;
+}
+
+.player-tab-info {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.player-tab-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.player-tab-dist {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.section-heading {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--text-main);
+}
+
+.sv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 20px;
+}
+
+.sv-card {
+  background: #141b2d;
+  border: 1px solid #232d45;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sv-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sv-sub-stat {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Spin Progress Bar */
+.spin-progress-bar {
+  height: 48px;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  background: #0f172a;
+}
+
+.spin-segment {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.spin-flat { background: #00bcff; color: #000; }
+.spin-topspin { background: #8b5cf6; color: #fff; }
+.spin-slice { background: #ccff00; color: #000; }
+
+/* Speed Histogram Bar Chart */
+.speed-histogram {
+  height: 140px;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding-top: 10px;
+  border-bottom: 1px solid #334155;
+}
+
+.hist-bar {
+  flex: 1;
+  background: #f97316;
+  border-radius: 2px 2px 0 0;
+  transition: height 0.3s ease;
+}
+
+.hist-bar:hover {
+  background: #fb923c;
+}
+
+/* 2x2 Stats Grid inside Cards */
+.sv-stats-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.sv-stat-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sv-stat-val {
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.sv-stat-lbl {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Shot Distribution Legend */
+.shot-dist-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.donut-center {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 12px solid #22c55e;
+  border-top-color: #38bdf8;
+  border-right-color: #f97316;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.donut-legend {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.donut-legend .dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
 

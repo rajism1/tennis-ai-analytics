@@ -39,6 +39,8 @@ class LabelingHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/api/events"):
             self.send_json_events()
+        elif self.path.startswith("/api/player_analytics"):
+            self.send_player_analytics()
         elif self.path.startswith("/api/export_csv"):
             self.export_verified_csv()
         elif self.path.startswith("/api/video"):
@@ -47,6 +49,26 @@ class LabelingHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.serve_snapshot()
         else:
             super().do_GET()
+
+    def send_player_analytics(self):
+        # Extract player parameter if provided: /api/player_analytics?player=Player%201
+        player_id = "Player 1"
+        if "player=" in self.path:
+            player_id = re.search(r'player=([^&]+)', self.path).group(1).replace("%20", " ")
+
+        engine = AnalyticsEngine()
+        if os.path.exists(JSON_PATH):
+            with open(JSON_PATH, "r") as f:
+                try:
+                    engine.records = json.load(f)
+                except Exception:
+                    engine.records = []
+
+        res_data = engine.compute_player_analytics(target_player=player_id)
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(res_data).encode('utf-8'))
 
     def serve_snapshot(self):
         filename = os.path.basename(self.path)
