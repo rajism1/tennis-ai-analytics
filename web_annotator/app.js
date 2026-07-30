@@ -70,7 +70,7 @@ function setupEventListeners() {
     vTableBtn.classList.remove("btn-primary");
     vGalleryBtn.classList.remove("btn-primary");
     loadPlayerAnalytics("Player 1");
-    setTimeout(drawTennisCourtHeatmap, 50);
+    requestAnimationFrame(() => setTimeout(drawTennisCourtHeatmap, 150));
   });
 
   // Player tab switcher
@@ -78,12 +78,14 @@ function setupEventListeners() {
     document.getElementById("tab-p1").classList.add("active");
     document.getElementById("tab-p2").classList.remove("active");
     loadPlayerAnalytics("Player 1");
+    requestAnimationFrame(() => setTimeout(drawTennisCourtHeatmap, 150));
   });
 
   document.getElementById("tab-p2").addEventListener("click", () => {
     document.getElementById("tab-p2").classList.add("active");
     document.getElementById("tab-p1").classList.remove("active");
     loadPlayerAnalytics("Player 2");
+    requestAnimationFrame(() => setTimeout(drawTennisCourtHeatmap, 150));
   });
 
   // Heatmap Controls
