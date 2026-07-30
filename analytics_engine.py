@@ -252,18 +252,20 @@ class AnalyticsEngine:
 
             if pos and len(pos) == 2:
                 try:
-                    nx = float(pos[0]) / 10.97
-                    ny = float(pos[1]) / 23.77
-                    if not np.isnan(nx) and not np.isnan(ny) and 0.0 <= nx <= 1.0 and 0.0 <= ny <= 1.0:
+                    px, py = float(pos[0]), float(pos[1])
+                    if not np.isnan(px) and not np.isnan(py):
+                        nx = float(np.clip(px / 10.97, 0.02, 0.98))
+                        ny = float(np.clip(py / 23.77, 0.02, 0.98))
                         hit_coords.append({"x": round(nx, 3), "y": round(ny, 3), "stroke": stroke})
                 except (ValueError, TypeError):
                     pass
 
             if land and len(land) == 2:
                 try:
-                    lx = float(land[0]) / 10.97
-                    ly = float(land[1]) / 23.77
-                    if not np.isnan(lx) and not np.isnan(ly) and 0.0 <= lx <= 1.0 and 0.0 <= ly <= 1.0:
+                    lx_val, ly_val = float(land[0]), float(land[1])
+                    if not np.isnan(lx_val) and not np.isnan(ly_val):
+                        lx = float(np.clip(lx_val / 10.97, 0.02, 0.98))
+                        ly = float(np.clip(ly_val / 23.77, 0.02, 0.98))
                         landing_coords.append({"x": round(lx, 3), "y": round(ly, 3), "stroke": stroke})
                 except (ValueError, TypeError):
                     pass
@@ -275,9 +277,10 @@ class AnalyticsEngine:
                 stroke = str(rec.get("stroke", "Bounce"))
                 if pos and len(pos) == 2:
                     try:
-                        bx = float(pos[0]) / 10.97
-                        by = float(pos[1]) / 23.77
-                        if not np.isnan(bx) and not np.isnan(by) and 0.0 <= bx <= 1.0 and 0.0 <= by <= 1.0:
+                        bx_val, by_val = float(pos[0]), float(pos[1])
+                        if not np.isnan(bx_val) and not np.isnan(by_val):
+                            bx = float(np.clip(bx_val / 10.97, 0.02, 0.98))
+                            by = float(np.clip(by_val / 23.77, 0.02, 0.98))
                             landing_coords.append({"x": round(bx, 3), "y": round(by, 3), "stroke": stroke})
                     except (ValueError, TypeError):
                         pass
