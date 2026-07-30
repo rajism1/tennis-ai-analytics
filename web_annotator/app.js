@@ -465,7 +465,12 @@ let currentHeatmapMode = "land"; // "land" (Ball Placement Landing Frequency) as
 
 function renderHeatmapSection(data) {
   currentHeatmapData = data;
-  setTimeout(drawTennisCourtHeatmap, 50);
+  drawTennisCourtHeatmap();
+  requestAnimationFrame(() => {
+    drawTennisCourtHeatmap();
+    setTimeout(drawTennisCourtHeatmap, 100);
+    setTimeout(drawTennisCourtHeatmap, 300);
+  });
 }
 
 function drawTennisCourtHeatmap() {
