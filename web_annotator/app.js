@@ -553,21 +553,6 @@ function drawTennisCourtHeatmap() {
   let filteredPts = points.filter(p => strokeFilter === "ALL" || p.stroke === strokeFilter);
   let totalCount = filteredPts.length;
 
-  // Fallback to sample court points if events have sparse coordinates
-  if (totalCount === 0) {
-    const defaultPoints = [
-      { x: 0.25, y: 0.3, stroke: "Forehand" },
-      { x: 0.35, y: 0.25, stroke: "Forehand" },
-      { x: 0.75, y: 0.35, stroke: "Backhand" },
-      { x: 0.65, y: 0.2, stroke: "Backhand" },
-      { x: 0.2, y: 0.7, stroke: "Forehand" },
-      { x: 0.8, y: 0.75, stroke: "Serve" },
-      { x: 0.5, y: 0.28, stroke: "Volley" }
-    ];
-    filteredPts.push(...defaultPoints);
-    totalCount = filteredPts.length;
-  }
-
   // 3. Draw Radial Heat Density Spots
   filteredPts.forEach(pt => {
     if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return;
@@ -651,7 +636,9 @@ function drawTennisCourtHeatmap() {
   // Onscreen status indicator
   const badge = document.querySelector(".stepper-badge");
   if (badge) {
-    badge.innerText = `✅ TELEMETRY READY - ${totalCount} BALL BOUNCES ANALYZED`;
+    const pName = (currentHeatmapData && currentHeatmapData.player) ? currentHeatmapData.player : "Player";
+    const modeStr = currentHeatmapMode === "land" ? "LANDINGS" : "HITS";
+    badge.innerText = `✅ TELEMETRY READY - ${totalCount} BALL ${modeStr} (${pName.toUpperCase()})`;
     badge.style.background = "rgba(56, 189, 248, 0.15)";
     badge.style.color = "#38bdf8";
   }
