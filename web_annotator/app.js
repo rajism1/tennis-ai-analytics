@@ -458,7 +458,7 @@ function renderPlayerAnalyticsUI(data) {
 
 // 2D Court Heatmap Renderer
 let currentHeatmapData = null;
-let currentHeatmapMode = "hit"; // "hit" or "land"
+let currentHeatmapMode = "land"; // "land" (Ball Placement Landing Frequency) as default mode
 
 function renderHeatmapSection(data) {
   currentHeatmapData = data;
@@ -473,34 +473,41 @@ function drawTennisCourtHeatmap() {
   const ch = canvas.height;
   const hm = currentHeatmapData.heatmap || { hit_coords: [], landing_coords: [] };
 
-  // 1. Draw Court Background & Surface
+  // 1. Draw Outer Surroundings & Blue Tennis Court Surface
   ctx.fillStyle = "#0f172a";
   ctx.fillRect(0, 0, cw, ch);
 
-  const marginX = 50;
-  const marginY = 30;
+  const marginX = 40;
+  const marginY = 25;
   const courtW = cw - marginX * 2;
   const courtH = ch - marginY * 2;
 
-  // Blue Court Surface
+  // Blue Tennis Court Surface
   ctx.fillStyle = "#1e3a8a";
   ctx.fillRect(marginX, marginY, courtW, courtH);
 
-  // White Court Boundaries
+  // White Court Outer Boundary
   ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 3.5;
   ctx.strokeRect(marginX, marginY, courtW, courtH);
 
-  // Net Line (Vertical Center)
-  ctx.lineWidth = 4;
+  // Net Line Across Middle (Vertical Net)
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.moveTo(marginX + courtW / 2, marginY);
-  ctx.lineTo(marginX + courtW / 2, marginY + courtH);
+  ctx.moveTo(marginX + courtW / 2, marginY - 6);
+  ctx.lineTo(marginX + courtW / 2, marginY + courtH + 6);
   ctx.stroke();
 
-  // Singles Lines
+  // Net Post Ticks
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(marginX + courtW / 2 - 3, marginY - 8, 6, 8);
+  ctx.fillRect(marginX + courtW / 2 - 3, marginY + courtH, 6, 8);
+
+  // Singles Lines (Inner horizontal sidelines)
   const singlesOffset = courtH * 0.12;
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(marginX, marginY + singlesOffset);
   ctx.lineTo(marginX + courtW, marginY + singlesOffset);
@@ -508,7 +515,7 @@ function drawTennisCourtHeatmap() {
   ctx.lineTo(marginX + courtW, marginY + courtH - singlesOffset);
   ctx.stroke();
 
-  // Service Lines
+  // Service Lines (Left & Right service boxes)
   const serviceOffset = courtW * 0.22;
   ctx.beginPath();
   ctx.moveTo(marginX + serviceOffset, marginY + singlesOffset);
@@ -523,22 +530,34 @@ function drawTennisCourtHeatmap() {
   ctx.lineTo(marginX + courtW - serviceOffset, marginY + courtH / 2);
   ctx.stroke();
 
-  // 2. Select Heatmap Coordinates (Hit vs Landing)
-  const points = currentHeatmapMode === "hit" ? (hm.hit_coords || []) : (hm.landing_coords || []);
-  const strokeFilter = document.getElementById("hm-filter-stroke") ? document.getElementById("hm-filter-stroke").value : "ALL";
+  // Center Mark Baseline Ticks
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(marginX, marginY + courtH / 2);
+  ctx.lineTo(marginX + 12, marginY + courtH / 2);
+  ctx.moveTo(marginX + courtW, marginY + courtH / 2);
+  ctx.lineTo(marginX + courtW - 12, marginY + courtH / 2);
+  ctx.stroke();
 
+  // 2. Select Heatmap Coordinates (Landing placement as primary)
+  let points = currentHeatmapMode === "land" ? (hm.landing_coords || []) : (hm.hit_coords || []);
+  if (points.length === 0 && currentHeatmapMode === "land") {
+    points = hm.hit_coords || []; // Fallback if no landings recorded
+  }
+
+  const strokeFilter = document.getElementById("hm-filter-stroke") ? document.getElementById("hm-filter-stroke").value : "ALL";
   const filteredPts = points.filter(p => strokeFilter === "ALL" || p.stroke === strokeFilter);
 
-  // 3. Draw Heat Density Radial Gradients
+  // 3. Draw Radial Heat Spots for Ball Landing Frequency
   filteredPts.forEach(pt => {
     const px = marginX + pt.x * courtW;
     const py = marginY + pt.y * courtH;
 
-    const radius = 35;
+    const radius = 38;
     const grad = ctx.createRadialGradient(px, py, 0, px, py, radius);
-    grad.addColorStop(0, "rgba(239, 68, 68, 0.75)"); // Red hot center
-    grad.addColorStop(0.4, "rgba(234, 179, 8, 0.5)"); // Yellow warm
-    grad.addColorStop(0.75, "rgba(56, 189, 248, 0.2)"); // Cyan halo
+    grad.addColorStop(0, "rgba(239, 68, 68, 0.85)");  // Hot red center
+    grad.addColorStop(0.35, "rgba(245, 158, 11, 0.6)"); // Yellow/orange glow
+    grad.addColorStop(0.7, "rgba(56, 189, 248, 0.25)"); // Cyan outer halo
     grad.addColorStop(1, "rgba(0, 0, 0, 0)");
 
     ctx.fillStyle = grad;
@@ -547,25 +566,34 @@ function drawTennisCourtHeatmap() {
     ctx.fill();
   });
 
-  // Draw Core Markers
+  // Draw Glowing Ball Bounce Dots
   filteredPts.forEach(pt => {
     const px = marginX + pt.x * courtW;
     const py = marginY + pt.y * courtH;
+    
+    // Outer yellow ring
+    ctx.strokeStyle = "#facc15";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // White core dot
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+    ctx.arc(px, py, 2.5, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  // 4. Update Tactical Insights
+  // 4. Update Tactical Insights Text
   const totalCount = filteredPts.length;
   if (totalCount > 0) {
     const rightSidePts = filteredPts.filter(p => p.x > 0.5).length;
     const rightPct = Math.round((rightSidePts / totalCount) * 100);
-    const modeName = currentHeatmapMode === "hit" ? "hitting position" : "ball placement";
+    const modeLabel = currentHeatmapMode === "land" ? "Ball Placement Landing Frequency" : "Hitting Position Coverage";
     
-    document.getElementById("insight-zone-desc").innerText = `${currentHeatmapData.player || 'Player'} ${modeName} is ${rightPct}% concentrated on the right (Deuce) court side (${totalCount} shots analyzed).`;
-    document.getElementById("insight-target-desc").innerText = `Deep court boundary placement is ${100 - rightPct}% concentrated on the left (Ad) court side.`;
-    document.getElementById("insight-coverage-desc").innerText = `Active movement & contact density measured across ${totalCount} shot events in match.`;
+    document.getElementById("insight-zone-desc").innerText = `${currentHeatmapData.player || 'Player'} ${modeLabel} is ${rightPct}% concentrated on the Right (Deuce Court) zone (${totalCount} ball bounces analyzed).`;
+    document.getElementById("insight-target-desc").innerText = `Left (Ad Court) deep baseline placement density is ${100 - rightPct}% of total shots.`;
+    document.getElementById("insight-coverage-desc").innerText = `Analyzed ${totalCount} ball impact locations across full 10.97m x 23.77m court dimensions.`;
   }
 }
