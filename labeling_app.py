@@ -30,11 +30,10 @@ else:
 
 class LabelingHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
-        # Serve static web dashboard files
-        if path.startswith("/api/"):
-            return path
-            
         req_path = path.split('?', 1)[0].split('#', 1)[0]
+        if req_path.startswith("/api/"):
+            return req_path
+            
         if req_path == "/" or req_path == "/index.html":
             return os.path.join(WEB_DIR, "index.html")
         elif os.path.exists(os.path.join(WEB_DIR, req_path.lstrip("/"))):
@@ -54,8 +53,6 @@ class LabelingHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith("/api/snapshot/"):
             self.serve_snapshot()
         else:
-            # Send cache control headers to prevent stale browser JS/CSS caching
-            self.send_response(200) if self.path != "/" else None
             super().do_GET()
 
     def end_headers(self):

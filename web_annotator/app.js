@@ -365,16 +365,34 @@ function updateMetrics() {
   document.getElementById("hdr-accuracy-pct").innerText = `${accuracy}%`;
 }
 
-// Fetch and Render SwingVision Player Analytics
-async function loadPlayerAnalytics(playerId) {
-  try {
-    const resP1 = await fetch(`/api/player_analytics?player=Player%201`);
-    const dataP1 = await resP1.json();
-    document.getElementById("p1-dist-txt").innerText = `👟 ${dataP1.distance_feet} ft | ${dataP1.total_shots} shots`;
+// In-Memory Client Cache to eliminate network latency on tab/player toggle
+const analyticsCache = {};
 
-    const resP2 = await fetch(`/api/player_analytics?player=Player%202`);
+// Fetch and Render SwingVision Player Analytics
+async function loadPlayerAnalytics(playerId = "Player 1") {
+  if (analyticsCache["Player 1"] && analyticsCache["Player 2"]) {
+    const cachedData = analyticsCache[playerId] || analyticsCache["Player 1"];
+    renderPlayerAnalyticsUI(cachedData);
+    return;
+  }
+
+  try {
+    const [resP1, resP2] = await Promise.all([
+      fetch(`/api/player_analytics?player=Player%201`),
+      fetch(`/api/player_analytics?player=Player%202`)
+    ]);
+
+    const dataP1 = await resP1.json();
     const dataP2 = await resP2.json();
-    document.getElementById("p2-dist-txt").innerText = `👟 ${dataP2.distance_feet} ft | ${dataP2.total_shots} shots`;
+
+    analyticsCache["Player 1"] = dataP1;
+    analyticsCache["Player 2"] = dataP2;
+
+    const elP1 = document.getElementById("p1-dist-txt");
+    if (elP1) elP1.innerText = `👟 ${dataP1.distance_feet} ft | ${dataP1.total_shots} shots`;
+
+    const elP2 = document.getElementById("p2-dist-txt");
+    if (elP2) elP2.innerText = `👟 ${dataP2.distance_feet} ft | ${dataP2.total_shots} shots`;
 
     const targetData = playerId === "Player 2" ? dataP2 : dataP1;
     renderPlayerAnalyticsUI(targetData);
