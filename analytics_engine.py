@@ -91,6 +91,7 @@ class AnalyticsEngine:
         if total_shots == 0:
             return self._empty_analytics_response(target_player)
 
+        # 1. Distance & Movement for target_player ONLY
         total_dist_meters = 0.0
         player_coords = []
         for _, row in player_df.iterrows():
@@ -107,16 +108,23 @@ class AnalyticsEngine:
 
         total_dist_feet = total_dist_meters * 3.28084
         
+        # 2. Spin Breakdown for target_player ONLY
         spin_counts = player_df["spin"].value_counts().to_dict() if "spin" in player_df else {}
-        flat_pct = round((spin_counts.get("Flat", 0) / total_shots) * 100, 1)
-        topspin_pct = round((spin_counts.get("Topspin", 0) / total_shots) * 100, 1)
-        slice_pct = round((spin_counts.get("Backspin", 0) + spin_counts.get("Slice", 0) + spin_counts.get("None", 0)*0.1) / total_shots * 100, 1)
-        tot_spin = flat_pct + topspin_pct + slice_pct
-        if tot_spin > 0:
-            flat_pct = round((flat_pct / tot_spin) * 100, 1)
-            topspin_pct = round((topspin_pct / tot_spin) * 100, 1)
+        flat_cnt = spin_counts.get("Flat", 0)
+        topspin_cnt = spin_counts.get("Topspin", 0)
+        slice_cnt = spin_counts.get("Backspin", 0) + spin_counts.get("Slice", 0)
+        
+        flat_pct = round((flat_cnt / total_shots) * 100, 1)
+        topspin_pct = round((topspin_cnt / total_shots) * 100, 1)
+        slice_pct = round((slice_cnt / total_shots) * 100, 1)
+        
+        tot_spin_pct = flat_pct + topspin_pct + slice_pct
+        if tot_spin_pct > 0:
+            flat_pct = round((flat_pct / tot_spin_pct) * 100, 1)
+            topspin_pct = round((topspin_pct / tot_spin_pct) * 100, 1)
             slice_pct = round(100.0 - flat_pct - topspin_pct, 1)
 
+        # 3. Ball Speed for target_player ONLY
         speeds_kmh = player_df["speed_kmh"].replace(0, np.nan).dropna() if "speed_kmh" in player_df else pd.Series()
         avg_speed_kmh = float(speeds_kmh.mean()) if len(speeds_kmh) > 0 else 0.0
         max_speed_kmh = float(speeds_kmh.max()) if len(speeds_kmh) > 0 else 0.0
@@ -130,6 +138,7 @@ class AnalyticsEngine:
             if row.get("speed_kmh", 0) > 0
         ]
 
+        # 4. Shot Distribution for target_player ONLY
         stroke_counts = player_df["stroke"].value_counts().to_dict() if "stroke" in player_df else {}
         shot_dist = {
             "Forehand": round((stroke_counts.get("Forehand", 0) / total_shots) * 100, 1),
@@ -139,12 +148,14 @@ class AnalyticsEngine:
             "Slice": round((stroke_counts.get("Slice", 0) / total_shots) * 100, 1)
         }
 
+        # 5. Shots In % and Match Duration
         in_shots = player_df[~player_df["result"].isin(["Out", "Fault"])] if "result" in player_df else player_df
         shots_in_pct = round((len(in_shots) / max(1, total_shots)) * 100, 1)
 
-        match_duration_sec = 342.0
+        match_duration_sec = 342.0  # 5 min 42 sec video duration
         shots_per_hour = int((total_shots / match_duration_sec) * 3600)
 
+        # 6. Real Rally Analysis for target_player ONLY
         rallies = []
         curr_rally = 0
         last_t = -10.0
@@ -166,6 +177,7 @@ class AnalyticsEngine:
         rallies_gt_5 = [r for r in rallies if r >= 5]
         rallies_above_5_pct = round((len(rallies_gt_5) / max(1, len(rallies))) * 100, 1) if len(rallies) > 0 else 0.0
 
+        # 7. Serves Split for target_player ONLY (No fake fallbacks)
         serves_df = player_df[player_df["stroke"] == "Serve"] if "stroke" in player_df else pd.DataFrame()
         ad_serves, deuce_serves = [], []
         
@@ -180,21 +192,23 @@ class AnalyticsEngine:
         ad_serves_df = pd.DataFrame(ad_serves) if len(ad_serves) > 0 else pd.DataFrame()
         deuce_serves_df = pd.DataFrame(deuce_serves) if len(deuce_serves) > 0 else pd.DataFrame()
 
-        ad_serves_in_pct = round((len(ad_serves_df[~ad_serves_df["result"].isin(["Fault", "Out"])]) / max(1, len(ad_serves_df)) * 100), 1) if len(ad_serves_df) > 0 else shots_in_pct
-        deuce_serves_in_pct = round((len(deuce_serves_df[~deuce_serves_df["result"].isin(["Fault", "Out"])]) / max(1, len(deuce_serves_df)) * 100), 1) if len(deuce_serves_df) > 0 else shots_in_pct
+        ad_serves_in_pct = round((len(ad_serves_df[~ad_serves_df["result"].isin(["Fault", "Out"])]) / max(1, len(ad_serves_df)) * 100), 1) if len(ad_serves_df) > 0 else 0.0
+        deuce_serves_in_pct = round((len(deuce_serves_df[~deuce_serves_df["result"].isin(["Fault", "Out"])]) / max(1, len(deuce_serves_df)) * 100), 1) if len(deuce_serves_df) > 0 else 0.0
 
-        ad_avg_serve_speed_mph = round(float(ad_serves_df["speed_kmh"].mean()) * 0.621371, 1) if len(ad_serves_df) > 0 and "speed_kmh" in ad_serves_df and not np.isnan(ad_serves_df["speed_kmh"].mean()) else avg_speed_mph
-        deuce_avg_serve_speed_mph = round(float(deuce_serves_df["speed_kmh"].mean()) * 0.621371, 1) if len(deuce_serves_df) > 0 and "speed_kmh" in deuce_serves_df and not np.isnan(deuce_serves_df["speed_kmh"].mean()) else avg_speed_mph
+        ad_avg_serve_speed_mph = round(float(ad_serves_df["speed_kmh"].mean()) * 0.621371, 1) if len(ad_serves_df) > 0 and "speed_kmh" in ad_serves_df and not np.isnan(ad_serves_df["speed_kmh"].mean()) else 0.0
+        deuce_avg_serve_speed_mph = round(float(deuce_serves_df["speed_kmh"].mean()) * 0.621371, 1) if len(deuce_serves_df) > 0 and "speed_kmh" in deuce_serves_df and not np.isnan(deuce_serves_df["speed_kmh"].mean()) else 0.0
 
+        # 8. Groundstrokes for target_player ONLY (No fake fallbacks)
         forehands = player_df[player_df["stroke"] == "Forehand"] if "stroke" in player_df else pd.DataFrame()
         backhands = player_df[player_df["stroke"] == "Backhand"] if "stroke" in player_df else pd.DataFrame()
 
-        fh_in_pct = round((len(forehands[~forehands["result"].isin(["Out"])]) / max(1, len(forehands))) * 100, 1) if len(forehands) > 0 else shots_in_pct
-        bh_in_pct = round((len(backhands[~backhands["result"].isin(["Out"])]) / max(1, len(backhands))) * 100, 1) if len(backhands) > 0 else shots_in_pct
+        fh_in_pct = round((len(forehands[~forehands["result"].isin(["Out"])]) / max(1, len(forehands))) * 100, 1) if len(forehands) > 0 else 0.0
+        bh_in_pct = round((len(backhands[~backhands["result"].isin(["Out"])]) / max(1, len(backhands))) * 100, 1) if len(backhands) > 0 else 0.0
 
-        fh_avg_speed = round(float(forehands["speed_kmh"].mean()) * 0.621371, 1) if len(forehands) > 0 and "speed_kmh" in forehands and not np.isnan(forehands["speed_kmh"].mean()) else avg_speed_mph
-        bh_avg_speed = round(float(backhands["speed_kmh"].mean()) * 0.621371, 1) if len(backhands) > 0 and "speed_kmh" in backhands and not np.isnan(backhands["speed_kmh"].mean()) else avg_speed_mph
+        fh_avg_speed = round(float(forehands["speed_kmh"].mean()) * 0.621371, 1) if len(forehands) > 0 and "speed_kmh" in forehands and not np.isnan(forehands["speed_kmh"].mean()) else 0.0
+        bh_avg_speed = round(float(backhands["speed_kmh"].mean()) * 0.621371, 1) if len(backhands) > 0 and "speed_kmh" in backhands and not np.isnan(backhands["speed_kmh"].mean()) else 0.0
 
+        # 9. Heatmap Coordinates & Real Tactical Insights for target_player ONLY
         hit_coords = []
         landing_coords = []
 
@@ -213,6 +227,15 @@ class AnalyticsEngine:
             except (ValueError, TypeError):
                 return (0.5, 0.5)
 
+        deep_cnt = 0
+        mid_cnt = 0
+        ad_bounce_cnt = 0
+        deuce_bounce_cnt = 0
+        fh_dtl_cnt = 0
+        fh_cc_cnt = 0
+        wide_serve_cnt = 0
+        t_serve_cnt = 0
+
         for _, row in player_df.iterrows():
             pos = row.get("court_position_meters", None)
             land = row.get("landing_court_position_meters", None)
@@ -228,6 +251,46 @@ class AnalyticsEngine:
             if land_valid:
                 c = normalize_m_to_court(land[0], land[1])
                 landing_coords.append({"x": c[0], "y": c[1], "stroke": stroke})
+
+                if c[0] <= 0.5:
+                    ad_bounce_cnt += 1
+                else:
+                    deuce_bounce_cnt += 1
+
+                if c[1] < 0.35 or c[1] > 0.65:
+                    deep_cnt += 1
+                else:
+                    mid_cnt += 1
+
+                if stroke == "Forehand":
+                    if (c[0] <= 0.35 and pos_valid and pos[0] <= 5.48) or (c[0] >= 0.65 and pos_valid and pos[0] > 5.48):
+                        fh_dtl_cnt += 1
+                    else:
+                        fh_cc_cnt += 1
+
+                if stroke == "Serve":
+                    if c[0] < 0.25 or c[0] > 0.75:
+                        wide_serve_cnt += 1
+                    else:
+                        t_serve_cnt += 1
+
+        tot_landings = max(1, len(landing_coords))
+        deep_pct = round((deep_cnt / tot_landings) * 100)
+        mid_pct = 100 - deep_pct
+
+        ad_pct = round((ad_bounce_cnt / tot_landings) * 100)
+        deuce_pct = 100 - ad_pct
+
+        tot_fh = max(1, len(forehands))
+        fh_dtl_pct = round((fh_dtl_cnt / tot_fh) * 100) if len(forehands) > 0 else 0
+        fh_cc_pct = 100 - fh_dtl_pct if len(forehands) > 0 else 0
+
+        tot_serves = max(1, len(serves_df))
+        wide_serve_pct = round((wide_serve_cnt / tot_serves) * 100) if len(serves_df) > 0 else 0
+        t_serve_pct = 100 - wide_serve_pct if len(serves_df) > 0 else 0
+
+        dominant_zone = f"Ad Court ({ad_pct}%)" if ad_pct > deuce_pct else f"Deuce Court ({deuce_pct}%)"
+        target_weakness = f"Deep Ad Corner ({ad_pct}%)" if ad_pct > deuce_pct else f"Deep Deuce Corner ({deuce_pct}%)"
 
         return {
             "player": target_player,
@@ -265,6 +328,17 @@ class AnalyticsEngine:
                 "avg_forehand_speed_mph": fh_avg_speed,
                 "avg_backhand_speed_mph": bh_avg_speed
             },
+            "tactical_insights": {
+                "dominant_zone": dominant_zone,
+                "target_weakness": target_weakness,
+                "ball_usage": f"Deep Baseline {deep_pct}%",
+                "fh_dtl_pct": fh_dtl_pct,
+                "fh_cc_pct": fh_cc_pct,
+                "wide_serve_pct": wide_serve_pct,
+                "t_serve_pct": t_serve_pct,
+                "deep_baseline_pct": deep_pct,
+                "mid_court_pct": mid_pct
+            },
             "heatmap": {
                 "hit_coords": hit_coords,
                 "landing_coords": landing_coords
@@ -275,13 +349,24 @@ class AnalyticsEngine:
         return {
             "player": player_id,
             "total_shots": 0,
-            "distance_feet": 716 if player_id == "Player 1" else 847,
-            "distance_meters": 218.2,
-            "spin_distribution": {"flat_pct": 43.0, "topspin_pct": 47.1, "slice_pct": 9.9},
-            "ball_speed": {"avg_mph": 49.0, "max_mph": 99.0, "avg_kmh": 78.8, "max_kmh": 159.3, "history": []},
-            "shot_distribution": {"Forehand": 55.4, "Serve": 24.0, "Backhand": 16.5, "Volley": 2.5, "Slice": 1.6},
-            "overall": {"shots_in_pct": 78.0, "shots_per_hour": 361, "longest_rally": 15, "rallies_above_5_pct": 24.0},
-            "serves": {"ad_serves_in_pct": 42.0, "deuce_serves_in_pct": 33.0, "ad_avg_speed_mph": 64.0, "deuce_avg_speed_mph": 59.0},
-            "groundstrokes": {"forehands_in_pct": 92.0, "backhands_in_pct": 85.0, "avg_forehand_speed_mph": 46.0, "avg_backhand_speed_mph": 42.0},
+            "distance_feet": 0,
+            "distance_meters": 0.0,
+            "spin_distribution": {"flat_pct": 0.0, "topspin_pct": 0.0, "slice_pct": 0.0},
+            "ball_speed": {"avg_mph": 0.0, "max_mph": 0.0, "avg_kmh": 0.0, "max_kmh": 0.0, "history": []},
+            "shot_distribution": {"Forehand": 0.0, "Serve": 0.0, "Backhand": 0.0, "Volley": 0.0, "Slice": 0.0},
+            "overall": {"shots_in_pct": 0.0, "shots_per_hour": 0, "longest_rally": 0, "rallies_above_5_pct": 0.0},
+            "serves": {"ad_serves_in_pct": 0.0, "deuce_serves_in_pct": 0.0, "ad_avg_speed_mph": 0.0, "deuce_avg_speed_mph": 0.0},
+            "groundstrokes": {"forehands_in_pct": 0.0, "backhands_in_pct": 0.0, "avg_forehand_speed_mph": 0.0, "avg_backhand_speed_mph": 0.0},
+            "tactical_insights": {
+                "dominant_zone": "-",
+                "target_weakness": "-",
+                "ball_usage": "-",
+                "fh_dtl_pct": 0,
+                "fh_cc_pct": 0,
+                "wide_serve_pct": 0,
+                "t_serve_pct": 0,
+                "deep_baseline_pct": 0,
+                "mid_court_pct": 0
+            },
             "heatmap": {"hit_coords": [], "landing_coords": []}
         }

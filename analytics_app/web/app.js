@@ -536,19 +536,19 @@ function renderPlayerAnalyticsUI(data) {
     setTxt("val-longest-rally", `${overall.longest_rally ?? 0}`);
     setTxt("val-rallies-5", `${overall.rallies_above_5_pct ?? 0}%`);
 
-    // 5. Serves Ad vs Deuce Split
+    // 5. Serves Ad vs Deuce Split (No fake fallbacks)
     const serves = data.serves || {};
-    setTxt("val-serves-ad-in", `${serves.ad_serves_in_pct ?? 0}%`);
-    setTxt("val-serves-deuce-in", `${serves.deuce_serves_in_pct ?? 0}%`);
-    setTxt("val-serve-spd-ad", `${serves.ad_avg_speed_mph ?? 0} mph`);
-    setTxt("val-serve-spd-deuce", `${serves.deuce_avg_speed_mph ?? 0} mph`);
+    setTxt("val-serves-ad-in", serves.ad_serves_in_pct > 0 ? `${serves.ad_serves_in_pct}%` : "N/A");
+    setTxt("val-serves-deuce-in", serves.deuce_serves_in_pct > 0 ? `${serves.deuce_serves_in_pct}%` : "N/A");
+    setTxt("val-serve-spd-ad", serves.ad_avg_speed_mph > 0 ? `${serves.ad_avg_speed_mph} mph` : "N/A");
+    setTxt("val-serve-spd-deuce", serves.deuce_avg_speed_mph > 0 ? `${serves.deuce_avg_speed_mph} mph` : "N/A");
 
-    // 6. Groundstrokes
+    // 6. Groundstrokes (No fake fallbacks)
     const gs = data.groundstrokes || {};
-    setTxt("val-fh-in", `${gs.forehands_in_pct ?? 0}%`);
-    setTxt("val-bh-in", `${gs.backhands_in_pct ?? 0}%`);
-    setTxt("val-fh-speed", `${gs.avg_forehand_speed_mph ?? 0} mph`);
-    setTxt("val-bh-speed", `${gs.avg_backhand_speed_mph ?? 0} mph`);
+    setTxt("val-fh-in", gs.forehands_in_pct > 0 ? `${gs.forehands_in_pct}%` : "N/A");
+    setTxt("val-bh-in", gs.backhands_in_pct > 0 ? `${gs.backhands_in_pct}%` : "N/A");
+    setTxt("val-fh-speed", gs.avg_forehand_speed_mph > 0 ? `${gs.avg_forehand_speed_mph} mph` : "N/A");
+    setTxt("val-bh-speed", gs.avg_backhand_speed_mph > 0 ? `${gs.avg_backhand_speed_mph} mph` : "N/A");
 
     // 7. Shot Type Breakdown
     const dist = data.shot_distribution || {};
@@ -559,10 +559,31 @@ function renderPlayerAnalyticsUI(data) {
     setTxt("pct-volley", `${dist.Volley ?? 0}%`);
     setTxt("pct-slice", `${dist.Slice ?? 0}%`);
 
+    // 8. Dynamic Tactical Insights & Telemetry Progress Bars
+    const ti = data.tactical_insights || {};
+    setTxt("badge-val-dominant", ti.dominant_zone || "-");
+    setTxt("badge-val-weakness", ti.target_weakness || "-");
+    setTxt("badge-val-usage", ti.ball_usage || "-");
+
+    setTxt("txt-fh-dtl", `${ti.fh_dtl_pct ?? 0}%`);
+    setStyleWidth("fill-fh-dtl", `${ti.fh_dtl_pct ?? 0}%`);
+    setTxt("txt-fh-cc", `${ti.fh_cc_pct ?? 0}%`);
+    setStyleWidth("fill-fh-cc", `${ti.fh_cc_pct ?? 0}%`);
+
+    setTxt("txt-serve-wide", `${ti.wide_serve_pct ?? 0}%`);
+    setStyleWidth("fill-serve-wide", `${ti.wide_serve_pct ?? 0}%`);
+    setTxt("txt-serve-t", `${ti.t_serve_pct ?? 0}%`);
+    setStyleWidth("fill-serve-t", `${ti.t_serve_pct ?? 0}%`);
+
+    setTxt("txt-depth-base", `${ti.deep_baseline_pct ?? 0}%`);
+    setStyleWidth("fill-depth-base", `${ti.deep_baseline_pct ?? 0}%`);
+    setTxt("txt-depth-mid", `${ti.mid_court_pct ?? 0}%`);
+    setStyleWidth("fill-depth-mid", `${ti.mid_court_pct ?? 0}%`);
+
   } catch (err) {
     console.error("Non-fatal UI update error:", err);
   } finally {
-    // 8. 2D Tennis Court Heatmap (ALWAYS EXECUTED)
+    // 9. 2D Tennis Court Heatmap (ALWAYS EXECUTED)
     renderHeatmapSection(data);
     hideAnalyticsLoader();
   }
@@ -731,23 +752,7 @@ function drawTennisCourtHeatmap() {
   ctx.fillText(`DEUCE COURT: ${deuceCnt} Bounces`, marginX + courtW * 0.75, marginY + 18);
   ctx.fillText(`AD COURT: ${adCnt} Bounces`, marginX + courtW * 0.25, marginY + 18);
 
-  // 6. Update Tactical Insights Badges & Telemetry Progress Bars
-  const rightSidePts = filteredPts.filter(p => p.x > 0.5).length;
-  const deucePct = Math.round((rightSidePts / Math.max(1, totalCount)) * 100);
-  const adPct = 100 - deucePct;
-
-  // Update Neon Badges
-  document.getElementById("badge-val-dominant").innerText = deucePct > 50 ? `Deuce Court (${deucePct}%)` : `Ad Court (${adPct}%)`;
-  document.getElementById("badge-val-weakness").innerText = `Deep Ad Corner (${adPct}%)`;
-  document.getElementById("badge-val-usage").innerText = `Deep Baseline 72%`;
-
-  // Update Telemetry Progress Bars
-  document.getElementById("txt-fh-dtl").innerText = `${deucePct}%`;
-  document.getElementById("fill-fh-dtl").style.width = `${deucePct}%`;
-  document.getElementById("txt-fh-cc").innerText = `${adPct}%`;
-  document.getElementById("fill-fh-cc").style.width = `${adPct}%`;
-
-  // Onscreen status indicator
+  // 6. Update Onscreen status indicator
   const badge = document.querySelector(".stepper-badge");
   if (badge) {
     const pName = (currentHeatmapData && currentHeatmapData.player) ? currentHeatmapData.player : "Player";
