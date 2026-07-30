@@ -2,6 +2,7 @@
 
 let eventsData = [];
 let selectedEventIndex = -1;
+const analyticsCache = {};
 const video = document.getElementById("match-video");
 const FPS = 59.0; // Raw video FPS
 
