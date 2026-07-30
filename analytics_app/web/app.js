@@ -77,14 +77,14 @@ function setupEventListeners() {
   document.getElementById("tab-p1").addEventListener("click", () => {
     document.getElementById("tab-p1").classList.add("active");
     document.getElementById("tab-p2").classList.remove("active");
-    loadPlayerAnalytics("Player 1");
+    loadPlayerAnalytics("Player 1", true);
     requestAnimationFrame(() => setTimeout(drawTennisCourtHeatmap, 150));
   });
 
   document.getElementById("tab-p2").addEventListener("click", () => {
     document.getElementById("tab-p2").classList.add("active");
     document.getElementById("tab-p1").classList.remove("active");
-    loadPlayerAnalytics("Player 2");
+    loadPlayerAnalytics("Player 2", true);
     requestAnimationFrame(() => setTimeout(drawTennisCourtHeatmap, 150));
   });
 
@@ -410,15 +410,10 @@ function hideAnalyticsError() {
   if (banner) banner.style.display = "none";
 }
 
-async function loadPlayerAnalytics(playerId = "Player 1") {
+async function loadPlayerAnalytics(playerId = "Player 1", forceRefresh = false) {
   hideAnalyticsError();
 
-  if (window.INITIAL_ANALYTICS_P1 && window.INITIAL_ANALYTICS_P2) {
-    analyticsCache["Player 1"] = window.INITIAL_ANALYTICS_P1;
-    analyticsCache["Player 2"] = window.INITIAL_ANALYTICS_P2;
-  }
-
-  if (analyticsCache["Player 1"] && analyticsCache["Player 2"]) {
+  if (!forceRefresh && analyticsCache["Player 1"] && analyticsCache["Player 2"]) {
     const dataP1 = analyticsCache["Player 1"];
     const dataP2 = analyticsCache["Player 2"];
     const elP1 = document.getElementById("p1-dist-txt");
@@ -436,11 +431,12 @@ async function loadPlayerAnalytics(playerId = "Player 1") {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout safeguard
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const ts = Date.now();
 
     const [resP1, resP2] = await Promise.all([
-      fetch(`/api/player_analytics?player=Player%201`, { signal: controller.signal }),
-      fetch(`/api/player_analytics?player=Player%202`, { signal: controller.signal })
+      fetch(`/api/player_analytics?player=Player%201&t=${ts}`, { signal: controller.signal }),
+      fetch(`/api/player_analytics?player=Player%202&t=${ts}`, { signal: controller.signal })
     ]);
     clearTimeout(timeoutId);
 
@@ -489,6 +485,15 @@ function renderPlayerAnalyticsUI(data) {
 
   try {
     setTxt("active-player-title", data.player || "Player 1");
+
+    const activeBanner = document.getElementById("active-player-banner");
+    if (activeBanner) {
+      const pTitle = data.player === "Player 2" ? "PLAYER 2 (OPPONENT)" : "PLAYER 1 (NEAR)";
+      activeBanner.innerText = `⚡ ACTIVE DATASET: ${pTitle} (${data.total_shots} SHOTS)`;
+      activeBanner.style.borderColor = data.player === "Player 2" ? "#f43f5e" : "#38bdf8";
+      activeBanner.style.color = data.player === "Player 2" ? "#f43f5e" : "#38bdf8";
+      activeBanner.style.background = data.player === "Player 2" ? "rgba(244, 63, 94, 0.15)" : "rgba(56, 189, 248, 0.15)";
+    }
 
     // 1. Distance & Movement
     const distTxt = `👟 ${data.distance_feet ?? 0} ft | ${data.total_shots ?? 0} shots`;
