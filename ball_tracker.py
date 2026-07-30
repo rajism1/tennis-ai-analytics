@@ -108,9 +108,13 @@ class BallTracker:
     def _detect_ball_blob(self, frame, player_poses=None):
         """
         Color/motion blob thresholding for tennis ball detection (Yellow-Green hue).
+        Optimized with 0.5x pre-scaling for 4x faster OpenCV color mask execution.
         """
         h, w, _ = frame.shape
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        scale = 0.5
+        small_frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
+        
+        hsv = cv2.cvtColor(small_frame, cv2.COLOR_BGR2HSV)
         
         # Tennis ball yellow-green HSV range
         lower_yellow = np.array([25, 80, 100])
@@ -118,22 +122,22 @@ class BallTracker:
         
         mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
         
-        # Mask out top-left scoreboard zone (where score banner lives)
-        mask[:int(h * 0.35), :int(w * 0.28)] = 0
-        
-        mask = cv2.GaussianBlur(mask, (5, 5), 0)
+        # Mask out top-left scoreboard zone
+        sh, sw = small_frame.shape[:2]
+        mask[:int(sh * 0.35), :int(sw * 0.28)] = 0
         
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         best_pt = None
-        min_size, max_size = 4, 25
+        min_size, max_size = 2, 15
         
         for cnt in contours:
             area = cv2.contourArea(cnt)
             if min_size <= area <= max_size * 5:
                 (x, y), radius = cv2.minEnclosingCircle(cnt)
                 if min_size <= radius <= max_size:
-                    best_pt = (float(x), float(y))
+                    # Rescale coordinates back to full image dimensions
+                    best_pt = (float(x / scale), float(y / scale))
                     break
 
         return best_pt

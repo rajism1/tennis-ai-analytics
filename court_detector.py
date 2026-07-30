@@ -41,6 +41,12 @@ class CourtDetector:
         Automatic white court line detection using HSV thresholding and Hough line intersections.
         Refines court corners dynamically if default corners do not align with actual court.
         """
+        self._frame_count = getattr(self, "_frame_count", 0) + 1
+
+        # Cache court lines: re-detect only once every 30 frames
+        if self.pixel_corners is not None and (self._frame_count % 30 != 0):
+            return self.pixel_corners
+
         if hasattr(self, "_corners_user_set") and self._corners_user_set:
             return self.pixel_corners
 

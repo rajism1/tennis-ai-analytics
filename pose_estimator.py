@@ -51,6 +51,12 @@ class PoseEstimator:
         Estimates pose for each detected player bounding box.
         Returns dict mapping player_id -> keypoint dictionary and joint angles.
         """
+        self._frame_count = getattr(self, "_frame_count", 0) + 1
+
+        # Reuse pose results on alternate frames for 50% GPU Pose model speedup
+        if hasattr(self, "_last_poses") and (self._frame_count % 2 != 0):
+            return self._last_poses
+
         poses = {}
         
         if self.model is not None:
@@ -103,6 +109,7 @@ class PoseEstimator:
 
                 poses[p_id] = self._process_keypoints(syn_kpts)
 
+        self._last_poses = poses
         return poses
 
     def _process_keypoints(self, kpts):

@@ -83,17 +83,27 @@ def run_tennis_pipeline(video_source, output_video_path=None, max_frames=None, d
         if max_frames and frame_idx > max_frames:
             break
 
-        # 1. Court Detection & Homography
+        # 1. Court Detection & Homography (Cached every 30 frames)
         court_detector.detect_court_lines(frame)
 
-        # 2. Player Detection & Initial Bounding Boxes
+        # 2. Player Detection & Tracking (Single YOLO pass)
         players = player_tracker.detect_and_track(frame, court_detector)
 
-        # 3. Pose Estimation (COCO 17 Keypoints)
+        # 3. Pose Estimation (COCO 17 Keypoints - Cached alternate frames)
         poses = pose_estimator.estimate_pose(frame, players)
 
-        # Refine player court coordinates using Pose Ankle Keypoints
-        players = player_tracker.detect_and_track(frame, court_detector, poses)
+        # Refine feet ground anchoring from ankle keypoints in memory
+        for p in players:
+            p_id = p["player_id"]
+            if p_id in poses and "keypoints" in poses[p_id] and "left_ankle" in poses[p_id]["keypoints"]:
+                l_ank = poses[p_id]["keypoints"]["left_ankle"]
+                r_ank = poses[p_id]["keypoints"]["right_ankle"]
+                if l_ank[0] > 0 and r_ank[0] > 0:
+                    ank_x = (l_ank[0] + r_ank[0]) / 2.0
+                    ank_y = (l_ank[1] + r_ank[1]) / 2.0
+                    p["feet_pixel"] = (ank_x, ank_y)
+                    if court_detector is not None:
+                        p["court_pos_m"] = court_detector.pixel_to_court((ank_x, ank_y))
 
         # 4. Ball Tracking & Physics (Speed, Height, Bounce)
         ball_info = ball_tracker.track_ball(frame, frame_idx, court_detector, poses)
