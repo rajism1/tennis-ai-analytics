@@ -541,8 +541,7 @@ function drawTennisCourtHeatmap() {
   ctx.lineTo(marginX + courtW - 12, marginY + courtH / 2);
   ctx.stroke();
 
-  if (!currentHeatmapData) return;
-  const hm = currentHeatmapData.heatmap || { hit_coords: [], landing_coords: [] };
+  const hm = (currentHeatmapData && currentHeatmapData.heatmap) ? currentHeatmapData.heatmap : { hit_coords: [], landing_coords: [] };
 
   // 2. Select Heatmap Coordinates (Landing placement as primary)
   let points = currentHeatmapMode === "land" ? (hm.landing_coords || []) : (hm.hit_coords || []);
