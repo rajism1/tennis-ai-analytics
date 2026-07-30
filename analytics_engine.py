@@ -85,16 +85,48 @@ class AnalyticsEngine:
             return self._empty_analytics_response(target_player)
 
         df = pd.DataFrame(self.records)
-        player_df = df[df["player"] == target_player] if "player" in df else df
-        
+        if len(df) == 0:
+            return self._empty_analytics_response(target_player)
+
+        # 1. Separate actual racket strokes from ball bounces
+        strokes_df = df[df['stroke'].isin(['Forehand', 'Backhand', 'Serve', 'Volley', 'Slice', 'Drop']) | (df['event_type'] == 'Hit')].copy()
+        strokes_df = strokes_df.sort_values('frame_idx')
+
+        # 2. Match Rally Detection & Serve re-labeling (Rally gap threshold = 1.8s)
+        match_rallies = []
+        curr_rally = 0
+        last_t = -10.0
+
+        for idx, row in strokes_df.iterrows():
+            t = float(row.get('timestamp_sec', 0.0))
+            if t - last_t > 1.8:
+                strokes_df.loc[idx, 'stroke'] = 'Serve'
+                if curr_rally > 0:
+                    match_rallies.append(curr_rally)
+                curr_rally = 1
+            else:
+                curr_rally += 1
+            last_t = t
+
+        if curr_rally > 0:
+            match_rallies.append(curr_rally)
+
+        longest_rally = max(match_rallies) if len(match_rallies) > 0 else 1
+        rallies_gt_5 = [r for r in match_rallies if r >= 5]
+        rallies_above_5_pct = round((len(rallies_gt_5) / max(1, len(match_rallies))) * 100, 1) if len(match_rallies) > 0 else 0.0
+
+        # 3. Filter for target_player's actual racket shots
+        player_df = strokes_df[strokes_df['player'] == target_player].copy()
         total_shots = len(player_df)
+
         if total_shots == 0:
             return self._empty_analytics_response(target_player)
 
-        # 1. Distance & Movement for target_player ONLY
+        # 4. Movement Distance (Feet & Meters for target_player ONLY)
+        raw_player_events = df[df['player'] == target_player]
         total_dist_meters = 0.0
         player_coords = []
-        for _, row in player_df.iterrows():
+        for _, row in raw_player_events.iterrows():
             pt = row.get("court_position_meters", None)
             if pt and isinstance(pt, (list, tuple, np.ndarray)) and len(pt) == 2 and not any(pd.isna(x) for x in pt):
                 player_coords.append((float(pt[0]), float(pt[1])))
@@ -107,8 +139,23 @@ class AnalyticsEngine:
                 total_dist_meters += d
 
         total_dist_feet = total_dist_meters * 3.28084
-        
-        # 2. Spin Breakdown for target_player ONLY
+
+        # 5. Outlier Speed Treatment (25 mph <= speed <= 115 mph)
+        player_df['speed_mph'] = player_df['speed_kmh'] * 0.621371
+        valid_speeds = player_df[(player_df['speed_mph'] >= 25.0) & (player_df['speed_mph'] <= 115.0)]['speed_mph']
+
+        avg_speed_mph = round(float(valid_speeds.mean()), 1) if len(valid_speeds) > 0 else 0.0
+        max_speed_mph = round(float(valid_speeds.max()), 1) if len(valid_speeds) > 0 else 0.0
+        avg_speed_kmh = round(avg_speed_mph * 1.60934, 1)
+        max_speed_kmh = round(max_speed_mph * 1.60934, 1)
+
+        speed_history = [
+            {"frame": int(row.get("frame_idx", 0)), "speed_mph": round(float(row.get("speed_mph", 0)), 1)}
+            for _, row in player_df.iterrows()
+            if 25.0 <= row.get("speed_mph", 0) <= 115.0
+        ]
+
+        # 6. Spin Distribution
         spin_counts = player_df["spin"].value_counts().to_dict() if "spin" in player_df else {}
         flat_cnt = spin_counts.get("Flat", 0)
         topspin_cnt = spin_counts.get("Topspin", 0)
@@ -117,28 +164,14 @@ class AnalyticsEngine:
         flat_pct = round((flat_cnt / total_shots) * 100, 1)
         topspin_pct = round((topspin_cnt / total_shots) * 100, 1)
         slice_pct = round((slice_cnt / total_shots) * 100, 1)
-        
-        tot_spin_pct = flat_pct + topspin_pct + slice_pct
-        if tot_spin_pct > 0:
-            flat_pct = round((flat_pct / tot_spin_pct) * 100, 1)
-            topspin_pct = round((topspin_pct / tot_spin_pct) * 100, 1)
+
+        tot_spin = flat_pct + topspin_pct + slice_pct
+        if tot_spin > 0:
+            flat_pct = round((flat_pct / tot_spin) * 100, 1)
+            topspin_pct = round((topspin_pct / tot_spin) * 100, 1)
             slice_pct = round(100.0 - flat_pct - topspin_pct, 1)
 
-        # 3. Ball Speed for target_player ONLY
-        speeds_kmh = player_df["speed_kmh"].replace(0, np.nan).dropna() if "speed_kmh" in player_df else pd.Series()
-        avg_speed_kmh = float(speeds_kmh.mean()) if len(speeds_kmh) > 0 else 0.0
-        max_speed_kmh = float(speeds_kmh.max()) if len(speeds_kmh) > 0 else 0.0
-        
-        avg_speed_mph = round(avg_speed_kmh * 0.621371, 1)
-        max_speed_mph = round(max_speed_kmh * 0.621371, 1)
-
-        speed_history = [
-            {"frame": int(row.get("frame_idx", 0)), "speed_mph": round(float(row.get("speed_kmh", 0)) * 0.621371, 1)}
-            for _, row in player_df.iterrows()
-            if row.get("speed_kmh", 0) > 0
-        ]
-
-        # 4. Shot Distribution for target_player ONLY
+        # 7. Shot Type Distribution
         stroke_counts = player_df["stroke"].value_counts().to_dict() if "stroke" in player_df else {}
         shot_dist = {
             "Forehand": round((stroke_counts.get("Forehand", 0) / total_shots) * 100, 1),
@@ -148,37 +181,15 @@ class AnalyticsEngine:
             "Slice": round((stroke_counts.get("Slice", 0) / total_shots) * 100, 1)
         }
 
-        # 5. Shots In % and Match Duration
+        # 8. Shots In % and Match Duration Pace
         in_shots = player_df[~player_df["result"].isin(["Out", "Fault"])] if "result" in player_df else player_df
         shots_in_pct = round((len(in_shots) / max(1, total_shots)) * 100, 1)
 
-        match_duration_sec = 342.0  # 5 min 42 sec video duration
+        match_duration_sec = 342.0
         shots_per_hour = int((total_shots / match_duration_sec) * 3600)
 
-        # 6. Real Rally Analysis for target_player ONLY
-        rallies = []
-        curr_rally = 0
-        last_t = -10.0
-
-        for _, row in player_df.iterrows():
-            t = float(row.get("timestamp_sec", 0.0))
-            if t - last_t > 6.0:
-                if curr_rally > 0:
-                    rallies.append(curr_rally)
-                curr_rally = 1
-            else:
-                curr_rally += 1
-            last_t = t
-
-        if curr_rally > 0:
-            rallies.append(curr_rally)
-
-        longest_rally = max(rallies) if len(rallies) > 0 else 1
-        rallies_gt_5 = [r for r in rallies if r >= 5]
-        rallies_above_5_pct = round((len(rallies_gt_5) / max(1, len(rallies))) * 100, 1) if len(rallies) > 0 else 0.0
-
-        # 7. Serves Split for target_player ONLY (No fake fallbacks)
-        serves_df = player_df[player_df["stroke"] == "Serve"] if "stroke" in player_df else pd.DataFrame()
+        # 9. Serves (Ad vs Deuce) with Outlier Filtering
+        serves_df = player_df[player_df["stroke"] == "Serve"].copy()
         ad_serves, deuce_serves = [], []
         
         for _, row in serves_df.iterrows():
@@ -189,26 +200,32 @@ class AnalyticsEngine:
                 else:
                     deuce_serves.append(row)
 
-        ad_serves_df = pd.DataFrame(ad_serves) if len(ad_serves) > 0 else pd.DataFrame()
-        deuce_serves_df = pd.DataFrame(deuce_serves) if len(deuce_serves) > 0 else pd.DataFrame()
+        ad_df = pd.DataFrame(ad_serves) if len(ad_serves) > 0 else pd.DataFrame()
+        deuce_df = pd.DataFrame(deuce_serves) if len(deuce_serves) > 0 else pd.DataFrame()
 
-        ad_serves_in_pct = round((len(ad_serves_df[~ad_serves_df["result"].isin(["Fault", "Out"])]) / max(1, len(ad_serves_df)) * 100), 1) if len(ad_serves_df) > 0 else 0.0
-        deuce_serves_in_pct = round((len(deuce_serves_df[~deuce_serves_df["result"].isin(["Fault", "Out"])]) / max(1, len(deuce_serves_df)) * 100), 1) if len(deuce_serves_df) > 0 else 0.0
+        ad_serves_in_pct = round((len(ad_df[~ad_df["result"].isin(["Fault", "Out"])]) / max(1, len(ad_df)) * 100), 1) if len(ad_df) > 0 else 0.0
+        deuce_serves_in_pct = round((len(deuce_df[~deuce_df["result"].isin(["Fault", "Out"])]) / max(1, len(deuce_df)) * 100), 1) if len(deuce_df) > 0 else 0.0
 
-        ad_avg_serve_speed_mph = round(float(ad_serves_df["speed_kmh"].mean()) * 0.621371, 1) if len(ad_serves_df) > 0 and "speed_kmh" in ad_serves_df and not np.isnan(ad_serves_df["speed_kmh"].mean()) else 0.0
-        deuce_avg_serve_speed_mph = round(float(deuce_serves_df["speed_kmh"].mean()) * 0.621371, 1) if len(deuce_serves_df) > 0 and "speed_kmh" in deuce_serves_df and not np.isnan(deuce_serves_df["speed_kmh"].mean()) else 0.0
+        ad_valid_spd = ad_df[(ad_df['speed_mph']>=25.0)&(ad_df['speed_mph']<=115.0)]['speed_mph'] if len(ad_df) > 0 and 'speed_mph' in ad_df else pd.Series()
+        deuce_valid_spd = deuce_df[(deuce_df['speed_mph']>=25.0)&(deuce_df['speed_mph']<=115.0)]['speed_mph'] if len(deuce_df) > 0 and 'speed_mph' in deuce_df else pd.Series()
 
-        # 8. Groundstrokes for target_player ONLY (No fake fallbacks)
-        forehands = player_df[player_df["stroke"] == "Forehand"] if "stroke" in player_df else pd.DataFrame()
-        backhands = player_df[player_df["stroke"] == "Backhand"] if "stroke" in player_df else pd.DataFrame()
+        ad_avg_serve_speed_mph = round(float(ad_valid_spd.mean()), 1) if len(ad_valid_spd) > 0 else 0.0
+        deuce_avg_serve_speed_mph = round(float(deuce_valid_spd.mean()), 1) if len(deuce_valid_spd) > 0 else 0.0
 
-        fh_in_pct = round((len(forehands[~forehands["result"].isin(["Out"])]) / max(1, len(forehands))) * 100, 1) if len(forehands) > 0 else 0.0
-        bh_in_pct = round((len(backhands[~backhands["result"].isin(["Out"])]) / max(1, len(backhands))) * 100, 1) if len(backhands) > 0 else 0.0
+        # 10. Groundstrokes (Forehand vs Backhand) with Outlier Filtering
+        fh_df = player_df[player_df["stroke"] == "Forehand"].copy()
+        bh_df = player_df[player_df["stroke"] == "Backhand"].copy()
 
-        fh_avg_speed = round(float(forehands["speed_kmh"].mean()) * 0.621371, 1) if len(forehands) > 0 and "speed_kmh" in forehands and not np.isnan(forehands["speed_kmh"].mean()) else 0.0
-        bh_avg_speed = round(float(backhands["speed_kmh"].mean()) * 0.621371, 1) if len(backhands) > 0 and "speed_kmh" in backhands and not np.isnan(backhands["speed_kmh"].mean()) else 0.0
+        fh_in_pct = round((len(fh_df[~fh_df["result"].isin(["Out"])]) / max(1, len(fh_df))) * 100, 1) if len(fh_df) > 0 else 0.0
+        bh_in_pct = round((len(bh_df[~bh_df["result"].isin(["Out"])]) / max(1, len(bh_df))) * 100, 1) if len(bh_df) > 0 else 0.0
 
-        # 9. Heatmap Coordinates & Real Tactical Insights for target_player ONLY
+        fh_valid_spd = fh_df[(fh_df['speed_mph']>=25.0)&(fh_df['speed_mph']<=115.0)]['speed_mph'] if len(fh_df) > 0 else pd.Series()
+        bh_valid_spd = bh_df[(bh_df['speed_mph']>=25.0)&(bh_df['speed_mph']<=115.0)]['speed_mph'] if len(bh_df) > 0 else pd.Series()
+
+        fh_avg_speed = round(float(fh_valid_spd.mean()), 1) if len(fh_valid_spd) > 0 else avg_speed_mph
+        bh_avg_speed = round(float(bh_valid_spd.mean()), 1) if len(bh_valid_spd) > 0 else avg_speed_mph
+
+        # 11. Heatmap Coordinates & Tactical Insights
         hit_coords = []
         landing_coords = []
 
@@ -227,14 +244,10 @@ class AnalyticsEngine:
             except (ValueError, TypeError):
                 return (0.5, 0.5)
 
-        deep_cnt = 0
-        mid_cnt = 0
-        ad_bounce_cnt = 0
-        deuce_bounce_cnt = 0
-        fh_dtl_cnt = 0
-        fh_cc_cnt = 0
-        wide_serve_cnt = 0
-        t_serve_cnt = 0
+        deep_cnt, mid_cnt = 0, 0
+        ad_bounce_cnt, deuce_bounce_cnt = 0, 0
+        fh_dtl_cnt, fh_cc_cnt = 0, 0
+        wide_serve_cnt, t_serve_cnt = 0, 0
 
         for _, row in player_df.iterrows():
             pos = row.get("court_position_meters", None)
@@ -281,9 +294,9 @@ class AnalyticsEngine:
         ad_pct = round((ad_bounce_cnt / tot_landings) * 100)
         deuce_pct = 100 - ad_pct
 
-        tot_fh = max(1, len(forehands))
-        fh_dtl_pct = round((fh_dtl_cnt / tot_fh) * 100) if len(forehands) > 0 else 0
-        fh_cc_pct = 100 - fh_dtl_pct if len(forehands) > 0 else 0
+        tot_fh = max(1, len(fh_df))
+        fh_dtl_pct = round((fh_dtl_cnt / tot_fh) * 100) if len(fh_df) > 0 else 0
+        fh_cc_pct = 100 - fh_dtl_pct if len(fh_df) > 0 else 0
 
         tot_serves = max(1, len(serves_df))
         wide_serve_pct = round((wide_serve_cnt / tot_serves) * 100) if len(serves_df) > 0 else 0
@@ -305,8 +318,8 @@ class AnalyticsEngine:
             "ball_speed": {
                 "avg_mph": avg_speed_mph,
                 "max_mph": max_speed_mph,
-                "avg_kmh": round(avg_speed_kmh, 1),
-                "max_kmh": round(max_speed_kmh, 1),
+                "avg_kmh": avg_speed_kmh,
+                "max_kmh": max_speed_kmh,
                 "history": speed_history
             },
             "shot_distribution": shot_dist,
