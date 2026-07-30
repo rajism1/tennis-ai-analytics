@@ -250,25 +250,37 @@ class AnalyticsEngine:
             land = row.get("landing_court_position_meters", None)
             stroke = str(row.get("stroke", "Hit"))
 
-            if pos and len(pos) == 2 and not (pos[0] == 0 and pos[1] == 0):
-                norm_x = max(0.0, min(1.0, float(pos[0]) / 10.97))
-                norm_y = max(0.0, min(1.0, float(pos[1]) / 23.77))
-                hit_coords.append({"x": round(norm_x, 3), "y": round(norm_y, 3), "stroke": stroke})
+            if pos and len(pos) == 2:
+                try:
+                    nx = float(pos[0]) / 10.97
+                    ny = float(pos[1]) / 23.77
+                    if not np.isnan(nx) and not np.isnan(ny) and 0.0 <= nx <= 1.0 and 0.0 <= ny <= 1.0:
+                        hit_coords.append({"x": round(nx, 3), "y": round(ny, 3), "stroke": stroke})
+                except (ValueError, TypeError):
+                    pass
 
-            if land and len(land) == 2 and not (land[0] == 0 and land[1] == 0):
-                norm_x = max(0.0, min(1.0, float(land[0]) / 10.97))
-                norm_y = max(0.0, min(1.0, float(land[1]) / 23.77))
-                landing_coords.append({"x": round(norm_x, 3), "y": round(norm_y, 3), "stroke": stroke})
+            if land and len(land) == 2:
+                try:
+                    lx = float(land[0]) / 10.97
+                    ly = float(land[1]) / 23.77
+                    if not np.isnan(lx) and not np.isnan(ly) and 0.0 <= lx <= 1.0 and 0.0 <= ly <= 1.0:
+                        landing_coords.append({"x": round(lx, 3), "y": round(ly, 3), "stroke": stroke})
+                except (ValueError, TypeError):
+                    pass
 
         # Also collect all Bounce events for full ball landing coverage
         for rec in self.records:
             if rec.get("event_type") == "Bounce" or rec.get("stroke") == "Bounce":
                 pos = rec.get("court_position_meters", None)
                 stroke = str(rec.get("stroke", "Bounce"))
-                if pos and len(pos) == 2 and not (pos[0] == 0 and pos[1] == 0):
-                    norm_x = max(0.0, min(1.0, float(pos[0]) / 10.97))
-                    norm_y = max(0.0, min(1.0, float(pos[1]) / 23.77))
-                    landing_coords.append({"x": round(norm_x, 3), "y": round(norm_y, 3), "stroke": stroke})
+                if pos and len(pos) == 2:
+                    try:
+                        bx = float(pos[0]) / 10.97
+                        by = float(pos[1]) / 23.77
+                        if not np.isnan(bx) and not np.isnan(by) and 0.0 <= bx <= 1.0 and 0.0 <= by <= 1.0:
+                            landing_coords.append({"x": round(bx, 3), "y": round(by, 3), "stroke": stroke})
+                    except (ValueError, TypeError):
+                        pass
 
         return {
             "player": target_player,
