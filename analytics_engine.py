@@ -254,8 +254,8 @@ class AnalyticsEngine:
                 try:
                     px, py = float(pos[0]), float(pos[1])
                     if not np.isnan(px) and not np.isnan(py):
-                        nx = float(np.clip(px / 10.97, 0.02, 0.98))
-                        ny = float(np.clip(py / 23.77, 0.02, 0.98))
+                        nx = float(np.clip((px + 1.5) / 14.0, 0.1, 0.9))
+                        ny = float(np.clip((py + 1.5) / 26.5, 0.1, 0.9))
                         hit_coords.append({"x": round(nx, 3), "y": round(ny, 3), "stroke": stroke})
                 except (ValueError, TypeError):
                     pass
@@ -264,8 +264,8 @@ class AnalyticsEngine:
                 try:
                     lx_val, ly_val = float(land[0]), float(land[1])
                     if not np.isnan(lx_val) and not np.isnan(ly_val):
-                        lx = float(np.clip(lx_val / 10.97, 0.02, 0.98))
-                        ly = float(np.clip(ly_val / 23.77, 0.02, 0.98))
+                        lx = float(np.clip((lx_val + 1.5) / 14.0, 0.1, 0.9))
+                        ly = float(np.clip((ly_val + 1.5) / 26.5, 0.1, 0.9))
                         landing_coords.append({"x": round(lx, 3), "y": round(ly, 3), "stroke": stroke})
                 except (ValueError, TypeError):
                     pass
@@ -279,8 +279,8 @@ class AnalyticsEngine:
                     try:
                         bx_val, by_val = float(pos[0]), float(pos[1])
                         if not np.isnan(bx_val) and not np.isnan(by_val):
-                            bx = float(np.clip(bx_val / 10.97, 0.02, 0.98))
-                            by = float(np.clip(by_val / 23.77, 0.02, 0.98))
+                            bx = float(np.clip((bx_val + 1.5) / 14.0, 0.1, 0.9))
+                            by = float(np.clip((by_val + 1.5) / 26.5, 0.1, 0.9))
                             landing_coords.append({"x": round(bx, 3), "y": round(by, 3), "stroke": stroke})
                     except (ValueError, TypeError):
                         pass
@@ -338,5 +338,6 @@ class AnalyticsEngine:
             "shot_distribution": {"Forehand": 55.4, "Serve": 24.0, "Backhand": 16.5, "Volley": 2.5, "Slice": 1.6},
             "overall": {"shots_in_pct": 78.0, "shots_per_hour": 361, "longest_rally": 15, "rallies_above_5_pct": 24.0},
             "serves": {"ad_serves_in_pct": 42.0, "deuce_serves_in_pct": 33.0, "ad_avg_speed_mph": 64.0, "deuce_avg_speed_mph": 59.0},
-            "groundstrokes": {"forehands_in_pct": 92.0, "backhands_in_pct": 85.0, "avg_forehand_speed_mph": 46.0, "avg_backhand_speed_mph": 42.0}
+            "groundstrokes": {"forehands_in_pct": 92.0, "backhands_in_pct": 85.0, "avg_forehand_speed_mph": 46.0, "avg_backhand_speed_mph": 42.0},
+            "heatmap": {"hit_coords": [], "landing_coords": []}
         }

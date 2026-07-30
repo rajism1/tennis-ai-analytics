@@ -569,7 +569,7 @@ function drawTennisCourtHeatmap() {
     totalCount = filteredPts.length;
   }
 
-  // 3. Draw Radial Heat Spots for Ball Landing Frequency
+  // 3. Draw Radial Heat Density Spots
   filteredPts.forEach(pt => {
     if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return;
 
@@ -579,11 +579,11 @@ function drawTennisCourtHeatmap() {
     if (!Number.isFinite(px) || !Number.isFinite(py)) return;
 
     try {
-      const radius = 38;
-      const grad = ctx.createRadialGradient(px, py, 0, px, py, radius);
-      grad.addColorStop(0, "rgba(239, 68, 68, 0.85)");  // Hot red center
-      grad.addColorStop(0.35, "rgba(245, 158, 11, 0.6)"); // Yellow/orange glow
-      grad.addColorStop(0.7, "rgba(56, 189, 248, 0.25)"); // Cyan outer halo
+      const radius = 32;
+      const grad = ctx.createRadialGradient(px, py, 2, px, py, radius);
+      grad.addColorStop(0, "rgba(239, 68, 68, 0.95)");   // Glowing red core
+      grad.addColorStop(0.35, "rgba(245, 158, 11, 0.85)"); // Vibrant yellow-orange
+      grad.addColorStop(0.7, "rgba(56, 189, 248, 0.5)");   // Cyan halo
       grad.addColorStop(1, "rgba(0, 0, 0, 0)");
 
       ctx.fillStyle = grad;
@@ -595,28 +595,45 @@ function drawTennisCourtHeatmap() {
     }
   });
 
-  // Draw Glowing Ball Bounce Dots
+  // 4. Draw Vibrant Neon Tennis Balls at Ball Landing Coordinates
   filteredPts.forEach(pt => {
     if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return;
     const px = marginX + pt.x * courtW;
     const py = marginY + pt.y * courtH;
     if (!Number.isFinite(px) || !Number.isFinite(py)) return;
     
-    // Outer yellow ring
-    ctx.strokeStyle = "#facc15";
-    ctx.lineWidth = 1.5;
+    // Outer black shadow border
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(px, py, 5, 0, Math.PI * 2);
+    ctx.arc(px, py, 6.5, 0, Math.PI * 2);
     ctx.stroke();
 
-    // White core dot
+    // Vibrant Yellow Tennis Ball Fill
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.arc(px, py, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // White core highlight
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+    ctx.arc(px - 1.5, py - 1.5, 1.8, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  // 4. Update Tactical Insights Text & Banner
+  // 5. Draw On-Court Zone Telemetry Overlay Labels
+  ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+  ctx.font = "bold 10px Inter, sans-serif";
+  ctx.textAlign = "center";
+  
+  const deuceCnt = filteredPts.filter(p => p.x > 0.5).length;
+  const adCnt = filteredPts.filter(p => p.x <= 0.5).length;
+  
+  ctx.fillText(`DEUCE SIDE: ${deuceCnt} Bounces`, marginX + courtW * 0.75, marginY + 16);
+  ctx.fillText(`AD SIDE: ${adCnt} Bounces`, marginX + courtW * 0.25, marginY + 16);
+
+  // 6. Update Tactical Insights Text & Banner
   const rightSidePts = filteredPts.filter(p => p.x > 0.5).length;
   const rightPct = Math.round((rightSidePts / Math.max(1, totalCount)) * 100);
   const modeLabel = currentHeatmapMode === "land" ? "Ball Placement Landing Frequency" : "Hitting Position Coverage";
@@ -628,8 +645,6 @@ function drawTennisCourtHeatmap() {
   // Onscreen status indicator
   const badge = document.querySelector(".stepper-badge");
   if (badge) {
-    badge.innerText = `✅ ANALYTICS READY - DATA PREPARED FOR ${totalCount} BALL LANDING EVENTS`;
-    badge.style.background = "rgba(34, 197, 94, 0.2)";
     badge.style.color = "#4ade80";
   }
 }
