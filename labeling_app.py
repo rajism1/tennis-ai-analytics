@@ -30,16 +30,17 @@ else:
 
 class LabelingHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
-        req_path = path.split('?', 1)[0].split('#', 1)[0]
-        if req_path.startswith("/api/"):
-            return req_path
-            
-        if req_path == "/" or req_path == "/index.html":
+        clean_path = path.split('?', 1)[0].split('#', 1)[0]
+        
+        if clean_path == "/" or clean_path == "/index.html":
             return os.path.join(WEB_DIR, "index.html")
-        elif os.path.exists(os.path.join(WEB_DIR, req_path.lstrip("/"))):
-            return os.path.join(WEB_DIR, req_path.lstrip("/"))
             
-        return super().translate_path(path)
+        relative_path = clean_path.lstrip("/")
+        full_path = os.path.join(WEB_DIR, relative_path)
+        if os.path.exists(full_path):
+            return full_path
+            
+        return super().translate_path(clean_path)
 
     def do_GET(self):
         req_path = self.path.split('?', 1)[0].split('#', 1)[0]

@@ -992,7 +992,7 @@ tr.active-row {
   background: rgba(15, 23, 42, 0.75);
   backdrop-filter: blur(4px);
   z-index: 50;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   border-radius: 12px;
