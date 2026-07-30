@@ -228,6 +228,25 @@ class AnalyticsEngine:
         fh_avg_speed = round(float(forehands["speed_kmh"].mean()) * 0.621371, 1) if len(forehands) > 0 and "speed_kmh" in forehands and not np.isnan(forehands["speed_kmh"].mean()) else avg_speed_mph
         bh_avg_speed = round(float(backhands["speed_kmh"].mean()) * 0.621371, 1) if len(backhands) > 0 and "speed_kmh" in backhands and not np.isnan(backhands["speed_kmh"].mean()) else avg_speed_mph
 
+        # 8. 2D Tennis Court Heatmap Coordinates (Hit positions & Landing positions)
+        hit_coords = []
+        landing_coords = []
+
+        for _, row in player_df.iterrows():
+            pos = row.get("court_position_meters", None)
+            land = row.get("landing_court_position_meters", None)
+            stroke = str(row.get("stroke", "Hit"))
+
+            if pos and len(pos) == 2 and not (pos[0] == 0 and pos[1] == 0):
+                norm_x = max(0.0, min(1.0, float(pos[0]) / 10.97))
+                norm_y = max(0.0, min(1.0, float(pos[1]) / 23.77))
+                hit_coords.append({"x": round(norm_x, 3), "y": round(norm_y, 3), "stroke": stroke})
+
+            if land and len(land) == 2 and not (land[0] == 0 and land[1] == 0):
+                norm_x = max(0.0, min(1.0, float(land[0]) / 10.97))
+                norm_y = max(0.0, min(1.0, float(land[1]) / 23.77))
+                landing_coords.append({"x": round(norm_x, 3), "y": round(norm_y, 3), "stroke": stroke})
+
         return {
             "player": target_player,
             "total_shots": total_shots,
@@ -263,6 +282,10 @@ class AnalyticsEngine:
                 "backhands_in_pct": bh_in_pct,
                 "avg_forehand_speed_mph": fh_avg_speed,
                 "avg_backhand_speed_mph": bh_avg_speed
+            },
+            "heatmap": {
+                "hit_coords": hit_coords,
+                "landing_coords": landing_coords
             }
         }
 

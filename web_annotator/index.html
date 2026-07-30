@@ -371,18 +371,49 @@
         </div>
       </div>
 
-      <!-- Card 6: Shot Type Distribution Donut -->
-      <div class="sv-card">
-        <div class="sv-card-title">Shot Type Breakdown</div>
-        <div class="shot-dist-wrapper">
-          <div class="donut-center" id="donut-center-cnt">121<br>Shots</div>
-          <ul class="donut-legend" id="donut-legend-list">
-            <li><span class="dot" style="background:#22c55e;"></span> Forehand: <strong id="pct-fh">55.4%</strong></li>
-            <li><span class="dot" style="background:#38bdf8;"></span> Serve: <strong id="pct-serve">24.0%</strong></li>
-            <li><span class="dot" style="background:#f97316;"></span> Backhand: <strong id="pct-bh">16.5%</strong></li>
-            <li><span class="dot" style="background:#eab308;"></span> Volley: <strong id="pct-volley">2.5%</strong></li>
-            <li><span class="dot" style="background:#a855f7;"></span> Slice: <strong id="pct-slice">1.6%</strong></li>
-          </ul>
+      <!-- Card 7: 2D Tennis Court Shot & Impact Heatmap Visualizer -->
+      <div class="sv-card sv-card-wide" style="grid-column: 1 / -1;">
+        <div class="sv-card-title">
+          <span>🔥 Tactical 2D Court Heatmap & Placement Density</span>
+          <div class="heatmap-controls">
+            <div class="btn-group">
+              <button class="btn btn-sm btn-primary" id="hm-mode-hit">📍 Hitting Position</button>
+              <button class="btn btn-sm" id="hm-mode-land">🎯 Ball Placement (Bounces)</button>
+            </div>
+            <select id="hm-filter-stroke" class="select-sm">
+              <option value="ALL">All Strokes</option>
+              <option value="Forehand">Forehand Only</option>
+              <option value="Backhand">Backhand Only</option>
+              <option value="Serve">Serve Only</option>
+              <option value="Volley">Volley Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="heatmap-wrapper">
+          <!-- HTML5 Canvas 2D Tennis Court Heatmap -->
+          <canvas id="heatmap-canvas" width="700" height="420"></canvas>
+
+          <div class="heatmap-insights-panel">
+            <h4 class="insights-title">💡 Tactical Match Insights</h4>
+            <div class="insight-item">
+              <span class="insight-badge hot">Dominant Baseline Zone</span>
+              <span class="insight-desc" id="insight-zone-desc">Player hits 68% of groundstrokes from the deep deuce corner.</span>
+            </div>
+            <div class="insight-item">
+              <span class="insight-badge strategic">Opponent Weakness Target</span>
+              <span class="insight-desc" id="insight-target-desc">Targeting deep backhand corner yields 78% winning points.</span>
+            </div>
+            <div class="insight-item">
+              <span class="insight-badge info">Court Coverage</span>
+              <span class="insight-desc" id="insight-coverage-desc">High movement density across mid-court transition zone.</span>
+            </div>
+            <div class="heatmap-legend">
+              <span class="legend-lbl">Density Scale:</span>
+              <div class="heatmap-gradient-bar"></div>
+              <div class="legend-ticks"><span>Low</span><span>Medium</span><span>Hotspot 🔥</span></div>
+            </div>
+          </div>
         </div>
       </div>
 

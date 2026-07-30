@@ -84,6 +84,33 @@ function setupEventListeners() {
     loadPlayerAnalytics("Player 2");
   });
 
+  // Heatmap Controls
+  const hmHitBtn = document.getElementById("hm-mode-hit");
+  const hmLandBtn = document.getElementById("hm-mode-land");
+  const hmFilter = document.getElementById("hm-filter-stroke");
+
+  if (hmHitBtn && hmLandBtn) {
+    hmHitBtn.addEventListener("click", () => {
+      currentHeatmapMode = "hit";
+      hmHitBtn.classList.add("btn-primary");
+      hmLandBtn.classList.remove("btn-primary");
+      drawTennisCourtHeatmap();
+    });
+
+    hmLandBtn.addEventListener("click", () => {
+      currentHeatmapMode = "land";
+      hmLandBtn.classList.add("btn-primary");
+      hmHitBtn.classList.remove("btn-primary");
+      drawTennisCourtHeatmap();
+    });
+  }
+
+  if (hmFilter) {
+    hmFilter.addEventListener("change", () => {
+      drawTennisCourtHeatmap();
+    });
+  }
+
   // Video playback time update
   video.addEventListener("timeupdate", () => {
     const currentFrame = Math.round(video.currentTime * FPS);
@@ -423,4 +450,121 @@ function renderPlayerAnalyticsUI(data) {
   document.getElementById("pct-bh").innerText = `${dist.Backhand ?? 0}%`;
   document.getElementById("pct-volley").innerText = `${dist.Volley ?? 0}%`;
   document.getElementById("pct-slice").innerText = `${dist.Slice ?? 0}%`;
+
+  // 8. 2D Tennis Court Heatmap
+  renderHeatmapSection(data);
+}
+
+// 2D Court Heatmap Renderer
+let currentHeatmapData = null;
+let currentHeatmapMode = "hit"; // "hit" or "land"
+
+function renderHeatmapSection(data) {
+  currentHeatmapData = data;
+  drawTennisCourtHeatmap();
+}
+
+function drawTennisCourtHeatmap() {
+  const canvas = document.getElementById("heatmap-canvas");
+  if (!canvas || !currentHeatmapData) return;
+  const ctx = canvas.getContext("2d");
+  const cw = canvas.width;
+  const ch = canvas.height;
+  const hm = currentHeatmapData.heatmap || { hit_coords: [], landing_coords: [] };
+
+  // 1. Draw Court Background & Surface
+  ctx.fillStyle = "#0f172a";
+  ctx.fillRect(0, 0, cw, ch);
+
+  const marginX = 50;
+  const marginY = 30;
+  const courtW = cw - marginX * 2;
+  const courtH = ch - marginY * 2;
+
+  // Blue Court Surface
+  ctx.fillStyle = "#1e3a8a";
+  ctx.fillRect(marginX, marginY, courtW, courtH);
+
+  // White Court Boundaries
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(marginX, marginY, courtW, courtH);
+
+  // Net Line (Vertical Center)
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(marginX + courtW / 2, marginY);
+  ctx.lineTo(marginX + courtW / 2, marginY + courtH);
+  ctx.stroke();
+
+  // Singles Lines
+  const singlesOffset = courtH * 0.12;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(marginX, marginY + singlesOffset);
+  ctx.lineTo(marginX + courtW, marginY + singlesOffset);
+  ctx.moveTo(marginX, marginY + courtH - singlesOffset);
+  ctx.lineTo(marginX + courtW, marginY + courtH - singlesOffset);
+  ctx.stroke();
+
+  // Service Lines
+  const serviceOffset = courtW * 0.22;
+  ctx.beginPath();
+  ctx.moveTo(marginX + serviceOffset, marginY + singlesOffset);
+  ctx.lineTo(marginX + serviceOffset, marginY + courtH - singlesOffset);
+  ctx.moveTo(marginX + courtW - serviceOffset, marginY + singlesOffset);
+  ctx.lineTo(marginX + courtW - serviceOffset, marginY + courtH - singlesOffset);
+  ctx.stroke();
+
+  // Center Service Line
+  ctx.beginPath();
+  ctx.moveTo(marginX + serviceOffset, marginY + courtH / 2);
+  ctx.lineTo(marginX + courtW - serviceOffset, marginY + courtH / 2);
+  ctx.stroke();
+
+  // 2. Select Heatmap Coordinates (Hit vs Landing)
+  const points = currentHeatmapMode === "hit" ? (hm.hit_coords || []) : (hm.landing_coords || []);
+  const strokeFilter = document.getElementById("hm-filter-stroke") ? document.getElementById("hm-filter-stroke").value : "ALL";
+
+  const filteredPts = points.filter(p => strokeFilter === "ALL" || p.stroke === strokeFilter);
+
+  // 3. Draw Heat Density Radial Gradients
+  filteredPts.forEach(pt => {
+    const px = marginX + pt.x * courtW;
+    const py = marginY + pt.y * courtH;
+
+    const radius = 35;
+    const grad = ctx.createRadialGradient(px, py, 0, px, py, radius);
+    grad.addColorStop(0, "rgba(239, 68, 68, 0.75)"); // Red hot center
+    grad.addColorStop(0.4, "rgba(234, 179, 8, 0.5)"); // Yellow warm
+    grad.addColorStop(0.75, "rgba(56, 189, 248, 0.2)"); // Cyan halo
+    grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(px, py, radius, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Draw Core Markers
+  filteredPts.forEach(pt => {
+    const px = marginX + pt.x * courtW;
+    const py = marginY + pt.y * courtH;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // 4. Update Tactical Insights
+  const totalCount = filteredPts.length;
+  if (totalCount > 0) {
+    const rightSidePts = filteredPts.filter(p => p.x > 0.5).length;
+    const rightPct = Math.round((rightSidePts / totalCount) * 100);
+    const modeName = currentHeatmapMode === "hit" ? "hitting position" : "ball placement";
+    
+    document.getElementById("insight-zone-desc").innerText = `${currentHeatmapData.player || 'Player'} ${modeName} is ${rightPct}% concentrated on the right (Deuce) court side (${totalCount} shots analyzed).`;
+    document.getElementById("insight-target-desc").innerText = `Deep court boundary placement is ${100 - rightPct}% concentrated on the left (Ad) court side.`;
+    document.getElementById("insight-coverage-desc").innerText = `Active movement & contact density measured across ${totalCount} shot events in match.`;
+  }
 }
