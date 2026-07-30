@@ -22,6 +22,8 @@ class AnalyticsHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
         if clean_path in ("/", "/index.html"):
             self.serve_index_html()
+        elif self.path.startswith("/api/video") or clean_path.endswith("match2.mp4"):
+            self.serve_video()
         elif self.path.startswith("/api/events"):
             self.send_json_events()
         elif self.path.startswith("/api/player_analytics"):
@@ -141,6 +143,68 @@ class AnalyticsHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.end_headers()
         self.wfile.write(data)
+
+    def serve_video(self):
+        video_paths = [
+            os.path.join(BASE_DIR, "match2.mp4"),
+            os.path.join(OUTPUT_DIR, "match2.mp4"),
+            os.path.join(MODULE_DIR, "match2.mp4")
+        ]
+        video_path = None
+        for p in video_paths:
+            if os.path.exists(p) and os.path.isfile(p):
+                video_path = p
+                break
+
+        if not video_path:
+            self.send_error(404, "match2.mp4 video file not found on server")
+            return
+
+        file_size = os.path.getsize(video_path)
+        range_header = self.headers.get("Range", None)
+
+        if not range_header:
+            self.send_response(200)
+            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Content-Length", str(file_size))
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self.end_headers()
+            with open(video_path, "rb") as f:
+                self.wfile.write(f.read())
+            return
+
+        try:
+            byte_range = range_header.strip().lower().replace("bytes=", "")
+            parts = byte_range.split("-")
+            start = int(parts[0]) if parts[0] else 0
+            end = int(parts[1]) if len(parts) > 1 and parts[1] else file_size - 1
+            if end >= file_size:
+                end = file_size - 1
+
+            chunk_size = (end - start) + 1
+
+            self.send_response(206)
+            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
+            self.send_header("Content-Length", str(chunk_size))
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self.end_headers()
+
+            with open(video_path, "rb") as f:
+                f.seek(start)
+                buffer_size = 64 * 1024
+                remaining = chunk_size
+                while remaining > 0:
+                    read_len = min(buffer_size, remaining)
+                    chunk = f.read(read_len)
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    remaining -= len(chunk)
+        except Exception as e:
+            print(f"[Server Video Error] {e}")
 
     def serve_snapshot(self):
         filename = os.path.basename(self.path)
