@@ -28,23 +28,11 @@ if os.path.exists(os.path.join(BASE_DIR, "match2.mp4")):
 else:
     VIDEO_PATH = os.path.join(BASE_DIR, "match.mp4")
 
-class LabelingHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
-    def translate_path(self, path):
-        clean_path = path.split('?', 1)[0].split('#', 1)[0]
-        
-        if clean_path == "/" or clean_path == "/index.html":
-            return os.path.join(WEB_DIR, "index.html")
-            
-        relative_path = clean_path.lstrip("/")
-        full_path = os.path.join(WEB_DIR, relative_path)
-        if os.path.exists(full_path):
-            return full_path
-            
-        return super().translate_path(clean_path)
-
+class LabelingHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        req_path = self.path.split('?', 1)[0].split('#', 1)[0]
-        if req_path == "/" or req_path == "/index.html":
+        clean_path = self.path.split('?', 1)[0].split('#', 1)[0]
+
+        if clean_path in ("/", "/index.html"):
             self.serve_index_html()
         elif self.path.startswith("/api/events"):
             self.send_json_events()
@@ -57,7 +45,34 @@ class LabelingHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith("/api/snapshot/"):
             self.serve_snapshot()
         else:
-            super().do_GET()
+            self.serve_static_file(clean_path)
+
+    def serve_static_file(self, req_path):
+        relative_path = req_path.lstrip("/")
+        full_path = os.path.join(WEB_DIR, relative_path)
+
+        if os.path.exists(full_path) and os.path.isfile(full_path):
+            content_type = "text/plain"
+            if full_path.endswith(".html"): content_type = "text/html; charset=utf-8"
+            elif full_path.endswith(".css"): content_type = "text/css"
+            elif full_path.endswith(".js"): content_type = "application/javascript"
+            elif full_path.endswith(".png"): content_type = "image/png"
+            elif full_path.endswith(".jpg") or full_path.endswith(".jpeg"): content_type = "image/jpeg"
+            elif full_path.endswith(".svg"): content_type = "image/svg+xml"
+
+            with open(full_path, "rb") as f:
+                data = f.read()
+
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
+            self.end_headers()
+            self.wfile.write(data)
+        else:
+            self.send_error(404, f"File not found: {req_path}")
 
     def serve_index_html(self):
         index_path = os.path.join(WEB_DIR, "index.html")
