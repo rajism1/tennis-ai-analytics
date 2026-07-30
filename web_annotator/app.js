@@ -365,22 +365,55 @@ function updateMetrics() {
   document.getElementById("hdr-accuracy-pct").innerText = `${accuracy}%`;
 }
 
-// In-Memory Client Cache to eliminate network latency on tab/player toggle
-const analyticsCache = {};
+function showAnalyticsLoader() {
+  const loader = document.getElementById("analytics-loader-overlay");
+  if (loader) loader.style.display = "flex";
+}
+
+function hideAnalyticsLoader() {
+  const loader = document.getElementById("analytics-loader-overlay");
+  if (loader) loader.style.display = "none";
+}
+
+function showAnalyticsError(msg) {
+  hideAnalyticsLoader();
+  const banner = document.getElementById("analytics-error-banner");
+  if (banner) {
+    banner.style.display = "flex";
+    banner.innerHTML = `<span>⚠️ <strong>TELEMETRY FETCH ERROR:</strong> ${msg}</span> <button class="btn btn-sm" onclick="loadPlayerAnalytics('Player 1')" style="background: rgba(239, 68, 68, 0.3); border: 1px solid #ef4444; color: #fff;">🔄 Retry Load</button>`;
+  }
+}
+
+function hideAnalyticsError() {
+  const banner = document.getElementById("analytics-error-banner");
+  if (banner) banner.style.display = "none";
+}
 
 // Fetch and Render SwingVision Player Analytics
 async function loadPlayerAnalytics(playerId = "Player 1") {
+  hideAnalyticsError();
+  showAnalyticsLoader();
+
   if (analyticsCache["Player 1"] && analyticsCache["Player 2"]) {
     const cachedData = analyticsCache[playerId] || analyticsCache["Player 1"];
     renderPlayerAnalyticsUI(cachedData);
+    hideAnalyticsLoader();
     return;
   }
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout safeguard
+
     const [resP1, resP2] = await Promise.all([
-      fetch(`/api/player_analytics?player=Player%201`),
-      fetch(`/api/player_analytics?player=Player%202`)
+      fetch(`/api/player_analytics?player=Player%201`, { signal: controller.signal }),
+      fetch(`/api/player_analytics?player=Player%202`, { signal: controller.signal })
     ]);
+    clearTimeout(timeoutId);
+
+    if (!resP1.ok || !resP2.ok) {
+      throw new Error(`HTTP Server Error: P1 Status ${resP1.status}, P2 Status ${resP2.status}`);
+    }
 
     const dataP1 = await resP1.json();
     const dataP2 = await resP2.json();
@@ -396,8 +429,10 @@ async function loadPlayerAnalytics(playerId = "Player 1") {
 
     const targetData = playerId === "Player 2" ? dataP2 : dataP1;
     renderPlayerAnalyticsUI(targetData);
+    hideAnalyticsLoader();
   } catch (err) {
     console.error("Error loading player analytics:", err);
+    showAnalyticsError(err.message || "Failed to communicate with python telemetry server");
   }
 }
 

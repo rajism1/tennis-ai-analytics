@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tennis AI - Event Labeling & Accuracy Verification</title>
-  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="style.css?v=18">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="app.js?v=17" defer></script>
+  <script src="app.js?v=18" defer></script>
 </head>
 <body>
 
@@ -271,10 +271,14 @@
       </button>
     </div>
 
-    <h2 class="section-heading"><span id="active-player-title">Player 1</span>'s Performance Analytics</h2>
+    <div id="analytics-error-banner" class="alert-error-banner" style="display: none; margin-bottom: 20px;"></div>
 
     <!-- SwingVision Layout Grid -->
-    <div class="sv-grid">
+    <div class="sv-grid" style="position: relative;">
+      <div id="analytics-loader-overlay" class="component-loader-overlay">
+        <div class="spinner-ring"></div>
+        <span>⚡ LOADING TELEMETRY ENGINE...</span>
+      </div>
       
       <!-- Card 1: Shot Spin Distribution -->
       <div class="sv-card">
