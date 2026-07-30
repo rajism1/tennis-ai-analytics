@@ -69,6 +69,7 @@ function setupEventListeners() {
     vTableBtn.classList.remove("btn-primary");
     vGalleryBtn.classList.remove("btn-primary");
     loadPlayerAnalytics("Player 1");
+    setTimeout(drawTennisCourtHeatmap, 50);
   });
 
   // Player tab switcher
@@ -461,7 +462,7 @@ let currentHeatmapMode = "hit"; // "hit" or "land"
 
 function renderHeatmapSection(data) {
   currentHeatmapData = data;
-  drawTennisCourtHeatmap();
+  setTimeout(drawTennisCourtHeatmap, 50);
 }
 
 function drawTennisCourtHeatmap() {
