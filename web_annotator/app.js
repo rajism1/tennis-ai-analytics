@@ -436,80 +436,103 @@ async function loadPlayerAnalytics(playerId = "Player 1") {
   }
 }
 
+function setTxt(id, txt) {
+  const el = document.getElementById(id);
+  if (el) el.innerText = txt;
+}
+
+function setHtml(id, txt) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = txt;
+}
+
+function setStyleWidth(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.style.width = val;
+}
+
 function renderPlayerAnalyticsUI(data) {
-  document.getElementById("active-player-title").innerText = data.player;
+  if (!data) return;
 
-  // 1. Distance & Movement
-  const distTxt = `👟 ${data.distance_feet} ft | ${data.total_shots} shots`;
-  if (data.player === "Player 1") {
-    document.getElementById("p1-dist-txt").innerText = distTxt;
-  } else {
-    document.getElementById("p2-dist-txt").innerText = distTxt;
+  try {
+    setTxt("active-player-title", data.player || "Player 1");
+
+    // 1. Distance & Movement
+    const distTxt = `👟 ${data.distance_feet ?? 0} ft | ${data.total_shots ?? 0} shots`;
+    if (data.player === "Player 1") {
+      setTxt("p1-dist-txt", distTxt);
+    } else {
+      setTxt("p2-dist-txt", distTxt);
+    }
+
+    // 2. Shot Spin Distribution
+    const spin = data.spin_distribution || {};
+    setStyleWidth("bar-flat", `${spin.flat_pct ?? 0}%`);
+    setTxt("lbl-flat", `${spin.flat_pct ?? 0}%`);
+    setStyleWidth("bar-topspin", `${spin.topspin_pct ?? 0}%`);
+    setTxt("lbl-topspin", `${spin.topspin_pct ?? 0}%`);
+    setStyleWidth("bar-slice", `${spin.slice_pct ?? 0}%`);
+    setTxt("lbl-slice", `${spin.slice_pct ?? 0}%`);
+
+    // 3. Ball Speed & Histogram
+    const speed = data.ball_speed || {};
+    setTxt("val-avg-speed", `${speed.avg_mph ?? 0} MPH`);
+    setTxt("val-max-speed", `${speed.max_mph ?? 0} MPH`);
+
+    const histContainer = document.getElementById("speed-histogram-bars");
+    if (histContainer) {
+      histContainer.innerHTML = "";
+      const history = speed.history || [];
+      const displayShots = history.length > 0 ? history.slice(-50) : [];
+      const maxMph = Math.max(...displayShots.map(s => s.speed_mph), 100);
+
+      displayShots.forEach(s => {
+        const bar = document.createElement("div");
+        bar.className = "hist-bar";
+        const hPct = Math.min(100, Math.max(8, (s.speed_mph / maxMph) * 100));
+        bar.style.height = `${hPct}%`;
+        bar.title = `Frame ${s.frame}: ${s.speed_mph} MPH`;
+        histContainer.appendChild(bar);
+      });
+    }
+
+    // 4. Overall Performance Stats
+    const overall = data.overall || {};
+    setTxt("val-shots-in", `${overall.shots_in_pct ?? 0}%`);
+    setTxt("val-shots-per-hr", `${overall.shots_per_hour ?? 0}`);
+    setTxt("val-longest-rally", `${overall.longest_rally ?? 0}`);
+    setTxt("val-rallies-5", `${overall.rallies_above_5_pct ?? 0}%`);
+
+    // 5. Serves Ad vs Deuce Split
+    const serves = data.serves || {};
+    setTxt("val-serves-ad-in", `${serves.ad_serves_in_pct ?? 0}%`);
+    setTxt("val-serves-deuce-in", `${serves.deuce_serves_in_pct ?? 0}%`);
+    setTxt("val-serve-spd-ad", `${serves.ad_avg_speed_mph ?? 0} mph`);
+    setTxt("val-serve-spd-deuce", `${serves.deuce_avg_speed_mph ?? 0} mph`);
+
+    // 6. Groundstrokes
+    const gs = data.groundstrokes || {};
+    setTxt("val-fh-in", `${gs.forehands_in_pct ?? 0}%`);
+    setTxt("val-bh-in", `${gs.backhands_in_pct ?? 0}%`);
+    setTxt("val-fh-speed", `${gs.avg_forehand_speed_mph ?? 0} mph`);
+    setTxt("val-bh-speed", `${gs.avg_backhand_speed_mph ?? 0} mph`);
+
+    // 7. Shot Type Breakdown
+    const dist = data.shot_distribution || {};
+    setHtml("donut-center-cnt", `${data.total_shots ?? 0}<br>Shots`);
+    setTxt("pct-fh", `${dist.Forehand ?? 0}%`);
+    setTxt("pct-serve", `${dist.Serve ?? 0}%`);
+    setTxt("pct-bh", `${dist.Backhand ?? 0}%`);
+    setTxt("pct-volley", `${dist.Volley ?? 0}%`);
+    setTxt("pct-slice", `${dist.Slice ?? 0}%`);
+
+  } catch (err) {
+    console.error("Non-fatal UI update error:", err);
+  } finally {
+    // 8. 2D Tennis Court Heatmap (ALWAYS EXECUTED)
+    renderHeatmapSection(data);
+    hideAnalyticsLoader();
   }
-
-  // 2. Shot Spin Distribution
-  const spin = data.spin_distribution || {};
-  document.getElementById("bar-flat").style.width = `${spin.flat_pct ?? 0}%`;
-  document.getElementById("lbl-flat").innerText = `${spin.flat_pct ?? 0}%`;
-  document.getElementById("bar-topspin").style.width = `${spin.topspin_pct ?? 0}%`;
-  document.getElementById("lbl-topspin").innerText = `${spin.topspin_pct ?? 0}%`;
-  document.getElementById("bar-slice").style.width = `${spin.slice_pct ?? 0}%`;
-  document.getElementById("lbl-slice").innerText = `${spin.slice_pct ?? 0}%`;
-
-  // 3. Ball Speed & Histogram
-  const speed = data.ball_speed || {};
-  document.getElementById("val-avg-speed").innerText = `${speed.avg_mph ?? 0} MPH`;
-  document.getElementById("val-max-speed").innerText = `${speed.max_mph ?? 0} MPH`;
-
-  const histContainer = document.getElementById("speed-histogram-bars");
-  histContainer.innerHTML = "";
-  const history = speed.history || [];
-  
-  // Render up to 50 real shot speed bars from the video
-  const displayShots = history.length > 0 ? history.slice(-50) : [];
-  const maxMph = Math.max(...displayShots.map(s => s.speed_mph), 100);
-
-  displayShots.forEach(s => {
-    const bar = document.createElement("div");
-    bar.className = "hist-bar";
-    const hPct = Math.min(100, Math.max(8, (s.speed_mph / maxMph) * 100));
-    bar.style.height = `${hPct}%`;
-    bar.title = `Frame ${s.frame}: ${s.speed_mph} MPH`;
-    histContainer.appendChild(bar);
-  });
-
-  // 4. Overall Performance Stats
-  const overall = data.overall || {};
-  document.getElementById("val-shots-in").innerText = `${overall.shots_in_pct ?? 0}%`;
-  document.getElementById("val-shots-per-hr").innerText = `${overall.shots_per_hour ?? 0}`;
-  document.getElementById("val-longest-rally").innerText = `${overall.longest_rally ?? 0}`;
-  document.getElementById("val-rallies-5").innerText = `${overall.rallies_above_5_pct ?? 0}%`;
-
-  // 5. Serves Ad vs Deuce Split
-  const serves = data.serves || {};
-  document.getElementById("val-serves-ad-in").innerText = `${serves.ad_serves_in_pct ?? 0}%`;
-  document.getElementById("val-serves-deuce-in").innerText = `${serves.deuce_serves_in_pct ?? 0}%`;
-  document.getElementById("val-serve-spd-ad").innerText = `${serves.ad_avg_speed_mph ?? 0} mph`;
-  document.getElementById("val-serve-spd-deuce").innerText = `${serves.deuce_avg_speed_mph ?? 0} mph`;
-
-  // 6. Groundstrokes
-  const gs = data.groundstrokes || {};
-  document.getElementById("val-fh-in").innerText = `${gs.forehands_in_pct ?? 0}%`;
-  document.getElementById("val-bh-in").innerText = `${gs.backhands_in_pct ?? 0}%`;
-  document.getElementById("val-fh-speed").innerText = `${gs.avg_forehand_speed_mph ?? 0} mph`;
-  document.getElementById("val-bh-speed").innerText = `${gs.avg_backhand_speed_mph ?? 0} mph`;
-
-  // 7. Shot Type Breakdown
-  const dist = data.shot_distribution || {};
-  document.getElementById("donut-center-cnt").innerHTML = `${data.total_shots ?? 0}<br>Shots`;
-  document.getElementById("pct-fh").innerText = `${dist.Forehand ?? 0}%`;
-  document.getElementById("pct-serve").innerText = `${dist.Serve ?? 0}%`;
-  document.getElementById("pct-bh").innerText = `${dist.Backhand ?? 0}%`;
-  document.getElementById("pct-volley").innerText = `${dist.Volley ?? 0}%`;
-  document.getElementById("pct-slice").innerText = `${dist.Slice ?? 0}%`;
-
-  // 8. 2D Tennis Court Heatmap
-  renderHeatmapSection(data);
 }
 
 // 2D Court Heatmap Renderer
