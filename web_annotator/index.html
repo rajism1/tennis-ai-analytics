@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tennis AI - Event Labeling & Accuracy Verification</title>
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=12">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="app.js?v=11" defer></script>
+  <script src="app.js?v=12" defer></script>
 </head>
 <body>
 
@@ -373,8 +373,11 @@
 
       <!-- Card 7: 2D Tennis Court Shot & Impact Heatmap Visualizer -->
       <div class="sv-card sv-card-wide" style="grid-column: 1 / -1;">
-        <div class="sv-card-title">
-          <span>🔥 Tactical 2D Court Heatmap & Placement Density</span>
+        <div class="sv-card-title" style="margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 18px; font-weight: 700; color: #fff;">🔥 TACTICAL MATCH INSIGHTS & COURT HEATMAP</span>
+            <span class="stepper-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600;">LIVE TELEMETRY ENGINE</span>
+          </div>
           <div class="heatmap-controls">
             <div class="btn-group">
               <button class="btn btn-sm" id="hm-mode-hit">📍 Hitting Position</button>
@@ -391,27 +394,83 @@
         </div>
 
         <div class="heatmap-wrapper">
-          <!-- HTML5 Canvas 2D Tennis Court Heatmap -->
-          <canvas id="heatmap-canvas" width="560" height="340"></canvas>
+          <!-- Left Panel: 2D Horizontal Tennis Court Canvas -->
+          <div class="canvas-container-outer">
+            <div class="player-tag tag-left" id="lbl-player-left">PLAYER 1 (NEAR)</div>
+            <div class="player-tag tag-right" id="lbl-player-right">OPPONENT (FAR)</div>
+            <canvas id="heatmap-canvas" width="620" height="360"></canvas>
+          </div>
 
+          <!-- Right Panel: High-Impact Tactical Insights & Progress Bars -->
           <div class="heatmap-insights-panel">
-            <h4 class="insights-title">💡 Tactical Match Insights</h4>
-            <div class="insight-item">
-              <span class="insight-badge hot">Dominant Baseline Zone</span>
-              <span class="insight-desc" id="insight-zone-desc">Player hits 68% of groundstrokes from the deep deuce corner.</span>
+            <h4 class="insights-title">💡 TACTICAL MATCH INSIGHTS</h4>
+
+            <!-- 3 Neon Glow Badges -->
+            <div class="neon-badges-grid">
+              <div class="neon-badge-card cyan">
+                <div class="badge-icon">👤</div>
+                <div class="badge-label">Dominant Baseline Zone</div>
+                <div class="badge-val" id="badge-val-dominant">Deuce Baseline</div>
+              </div>
+              <div class="neon-badge-card red">
+                <div class="badge-icon">🎯</div>
+                <div class="badge-label">Opponent Weakness</div>
+                <div class="badge-val" id="badge-val-weakness">Deep Backhand Corner</div>
+              </div>
+              <div class="neon-badge-card yellow">
+                <div class="badge-icon">🎾</div>
+                <div class="badge-label">High Ball Usage</div>
+                <div class="badge-val" id="badge-val-usage">Deep Court 72%</div>
+              </div>
             </div>
-            <div class="insight-item">
-              <span class="insight-badge strategic">Opponent Weakness Target</span>
-              <span class="insight-desc" id="insight-target-desc">Targeting deep backhand corner yields 78% winning points.</span>
+
+            <!-- Progress Bar Analytics Breakdown -->
+            <div class="telemetry-progress-grid">
+              <!-- Forehand Placement -->
+              <div class="progress-card">
+                <div class="card-subtitle">Forehand Placement</div>
+                <div class="bar-item">
+                  <div class="bar-header"><span>Down-the-Line</span><span id="txt-fh-dtl">68%</span></div>
+                  <div class="bar-bg"><div class="bar-fill cyan" id="fill-fh-dtl" style="width: 68%;"></div></div>
+                </div>
+                <div class="bar-item">
+                  <div class="bar-header"><span>Cross-Court</span><span id="txt-fh-cc">32%</span></div>
+                  <div class="bar-bg"><div class="bar-fill cyan" id="fill-fh-cc" style="width: 32%;"></div></div>
+                </div>
+              </div>
+
+              <!-- Serve Density -->
+              <div class="progress-card">
+                <div class="card-subtitle">Serve Density</div>
+                <div class="bar-item">
+                  <div class="bar-header"><span>Wide Serve</span><span id="txt-serve-wide">45%</span></div>
+                  <div class="bar-bg"><div class="bar-fill blue" id="fill-serve-wide" style="width: 45%;"></div></div>
+                </div>
+                <div class="bar-item">
+                  <div class="bar-header"><span>T-Serve</span><span id="txt-serve-t">30%</span></div>
+                  <div class="bar-bg"><div class="bar-fill blue" id="fill-serve-t" style="width: 30%;"></div></div>
+                </div>
+              </div>
+
+              <!-- Shot Depth -->
+              <div class="progress-card">
+                <div class="card-subtitle">Shot Depth</div>
+                <div class="bar-item">
+                  <div class="bar-header"><span>Deep Baseline</span><span id="txt-depth-base">72%</span></div>
+                  <div class="bar-bg"><div class="bar-fill yellow" id="fill-depth-base" style="width: 72%;"></div></div>
+                </div>
+                <div class="bar-item">
+                  <div class="bar-header"><span>Mid-Court / Net</span><span id="txt-depth-mid">28%</span></div>
+                  <div class="bar-bg"><div class="bar-fill yellow" id="fill-depth-mid" style="width: 28%;"></div></div>
+                </div>
+              </div>
             </div>
-            <div class="insight-item">
-              <span class="insight-badge info">Court Coverage</span>
-              <span class="insight-desc" id="insight-coverage-desc">High movement density across mid-court transition zone.</span>
-            </div>
+
+            <!-- Heatmap Gradient Scale Legend Bar -->
             <div class="heatmap-legend">
-              <span class="legend-lbl">Density Scale:</span>
+              <div class="legend-labels"><span>LOW DENSITY</span><span>HIGH DENSITY 🔥</span></div>
               <div class="heatmap-gradient-bar"></div>
-              <div class="legend-ticks"><span>Low</span><span>Medium</span><span>Hotspot 🔥</span></div>
+              <div class="legend-ticks"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30+ Bounces</span></div>
             </div>
           </div>
         </div>

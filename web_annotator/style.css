@@ -436,18 +436,54 @@ tr.active-row {
 
 .heatmap-wrapper {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 24px;
   background: #0b0f19;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #1e293b;
+}
+
+.canvas-container-outer {
+  position: relative;
+  background: #0f172a;
   border-radius: 12px;
-  padding: 16px;
+  border: 2px solid #06b6d4;
+  box-shadow: 0 0 30px rgba(6, 182, 212, 0.25);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-tag {
+  position: absolute;
+  top: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+}
+
+.player-tag.tag-left {
+  left: 16px;
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.player-tag.tag-right {
+  right: 16px;
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.4);
 }
 
 #heatmap-canvas {
-  background: #1e293b;
+  background: #0f172a;
   border-radius: 8px;
-  border: 2px solid #334155;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  display: block;
 }
 
 .heatmap-insights-panel {
@@ -455,67 +491,150 @@ tr.active-row {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: #141b2d;
-  border: 1px solid #232d45;
+  background: #111827;
+  border: 1px solid #1f2937;
   border-radius: 12px;
   padding: 20px;
 }
 
 .insights-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--accent-primary);
+  color: #94a3b8;
+  letter-spacing: 0.5px;
 }
 
-.insight-item {
+/* 3 Neon Badges */
+.neon-badges-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.neon-badge-card {
+  background: #1e293b;
+  border-radius: 10px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  transition: transform 0.2s ease;
 }
 
-.insight-badge {
-  display: inline-block;
+.neon-badge-card.cyan {
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: inset 0 0 15px rgba(56, 189, 248, 0.1);
+}
+
+.neon-badge-card.red {
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.1);
+}
+
+.neon-badge-card.yellow {
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  box-shadow: inset 0 0 15px rgba(234, 179, 8, 0.1);
+}
+
+.badge-icon {
+  font-size: 16px;
+}
+
+.badge-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.badge-val {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Telemetry Progress Grid */
+.telemetry-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.progress-card {
+  background: #182234;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #233148;
+}
+
+.card-subtitle {
   font-size: 11px;
   font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 4px;
-  width: fit-content;
+  color: #cbd5e1;
+  margin-bottom: 8px;
 }
 
-.insight-badge.hot { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
-.insight-badge.strategic { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
-.insight-badge.info { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
-
-.insight-desc {
-  font-size: 13px;
-  color: var(--text-main);
-  line-height: 1.4;
+.bar-item {
+  margin-bottom: 6px;
 }
+
+.bar-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
+.bar-bg {
+  height: 6px;
+  background: #0f172a;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.bar-fill.cyan { background: linear-gradient(to right, #06b6d4, #38bdf8); }
+.bar-fill.blue { background: linear-gradient(to right, #2563eb, #60a5fa); }
+.bar-fill.yellow { background: linear-gradient(to right, #d97706, #facc15); }
 
 .heatmap-legend {
-  margin-top: 8px;
+  margin-top: auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  background: #182234;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #233148;
 }
 
-.legend-lbl {
-  font-size: 12px;
-  color: var(--text-muted);
+.legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
 }
 
 .heatmap-gradient-bar {
-  height: 10px;
+  height: 12px;
   width: 100%;
-  border-radius: 5px;
-  background: linear-gradient(to right, rgba(0,0,255,0.4), rgba(0,255,255,0.7), rgba(255,255,0,0.9), rgba(255,0,0,1));
+  border-radius: 6px;
+  background: linear-gradient(to right, #06b6d4 0%, #22c55e 25%, #eab308 50%, #f97316 75%, #ef4444 100%);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
 }
 
 .legend-ticks {
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
-  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 600;
+  color: #64748b;
 }
 
 /* Pipeline Stepper Banner */
