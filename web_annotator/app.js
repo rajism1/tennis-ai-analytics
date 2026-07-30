@@ -365,14 +365,35 @@ function updateMetrics() {
   document.getElementById("hdr-accuracy-pct").innerText = `${accuracy}%`;
 }
 
+const cardIds = ["loader-card-1", "loader-card-2", "loader-card-3", "loader-card-4", "loader-card-5", "loader-card-heatmap"];
+const statusIds = ["status-card-1", "status-card-2", "status-card-3", "status-card-4", "status-card-5"];
+
 function showAnalyticsLoader() {
-  const loader = document.getElementById("analytics-loader-overlay");
-  if (loader) loader.style.display = "flex";
+  cardIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "flex";
+  });
+  statusIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.innerText = "LOADING";
+      el.className = "card-status-tag loading";
+    }
+  });
 }
 
 function hideAnalyticsLoader() {
-  const loader = document.getElementById("analytics-loader-overlay");
-  if (loader) loader.style.display = "none";
+  cardIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+  statusIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.innerText = "READY";
+      el.className = "card-status-tag";
+    }
+  });
 }
 
 function showAnalyticsError(msg) {

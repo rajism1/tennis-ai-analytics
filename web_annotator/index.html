@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tennis AI - Event Labeling & Accuracy Verification</title>
-  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="style.css?v=20">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="app.js?v=19" defer></script>
+  <script src="app.js?v=20" defer></script>
 </head>
 <body>
 
@@ -274,15 +274,12 @@
     <div id="analytics-error-banner" class="alert-error-banner" style="display: none; margin-bottom: 20px;"></div>
 
     <!-- SwingVision Layout Grid -->
-    <div class="sv-grid" style="position: relative;">
-      <div id="analytics-loader-overlay" class="component-loader-overlay">
-        <div class="spinner-ring"></div>
-        <span>⚡ LOADING TELEMETRY ENGINE...</span>
-      </div>
+    <div class="sv-grid">
       
       <!-- Card 1: Shot Spin Distribution -->
       <div class="sv-card">
-        <div class="sv-card-title">Shot Spin Distribution</div>
+        <div class="card-loader" id="loader-card-1" style="display: none;"><div class="mini-spinner"></div></div>
+        <div class="sv-card-title">Shot Spin Distribution <span class="card-status-tag" id="status-card-1">READY</span></div>
         <div class="spin-progress-bar">
           <div class="spin-segment spin-flat" id="bar-flat" style="width: 43%;">
             <span>Flat<br><strong id="lbl-flat">43.0%</strong></span>
@@ -298,8 +295,9 @@
 
       <!-- Card 2: Ball Speed Chart -->
       <div class="sv-card">
+        <div class="card-loader" id="loader-card-2" style="display: none;"><div class="mini-spinner"></div></div>
         <div class="sv-card-title">
-          <span>Ball Speed</span>
+          <span>Ball Speed <span class="card-status-tag" id="status-card-2">READY</span></span>
           <span class="sv-sub-stat">Avg: <strong id="val-avg-speed">49 MPH</strong> &nbsp;|&nbsp; Max: <strong id="val-max-speed">99 MPH</strong></span>
         </div>
         <div class="speed-histogram" id="speed-histogram-bars">
@@ -308,7 +306,8 @@
 
       <!-- Card 3: Overall Performance -->
       <div class="sv-card">
-        <div class="sv-card-title">Overall Performance</div>
+        <div class="card-loader" id="loader-card-3" style="display: none;"><div class="mini-spinner"></div></div>
+        <div class="sv-card-title">Overall Performance <span class="card-status-tag" id="status-card-3">READY</span></div>
         <div class="sv-stats-2x2">
           <div class="sv-stat-box">
             <span class="sv-stat-val" id="val-shots-in">78%</span>
@@ -331,7 +330,8 @@
 
       <!-- Card 4: Serves Ad vs Deuce -->
       <div class="sv-card">
-        <div class="sv-card-title">Serves (Ad vs Deuce Court)</div>
+        <div class="card-loader" id="loader-card-4" style="display: none;"><div class="mini-spinner"></div></div>
+        <div class="sv-card-title">Serves (Ad vs Deuce Court) <span class="card-status-tag" id="status-card-4">READY</span></div>
         <div class="sv-stats-2x2">
           <div class="sv-stat-box">
             <span class="sv-stat-val" id="val-serves-ad-in">42%</span>
@@ -354,7 +354,8 @@
 
       <!-- Card 5: Groundstrokes -->
       <div class="sv-card">
-        <div class="sv-card-title">Groundstrokes</div>
+        <div class="card-loader" id="loader-card-5" style="display: none;"><div class="mini-spinner"></div></div>
+        <div class="sv-card-title">Groundstrokes <span class="card-status-tag" id="status-card-5">READY</span></div>
         <div class="sv-stats-2x2">
           <div class="sv-stat-box">
             <span class="sv-stat-val" id="val-fh-in">92%</span>
@@ -377,6 +378,7 @@
 
       <!-- Card 7: 2D Tennis Court Shot & Impact Heatmap Visualizer -->
       <div class="sv-card sv-card-wide" style="grid-column: 1 / -1;">
+        <div class="card-loader" id="loader-card-heatmap" style="display: none;"><div class="mini-spinner"></div></div>
         <div class="sv-card-title" style="margin-bottom: 20px;">
           <div style="display: flex; align-items: center; gap: 10px;">
             <span style="font-size: 18px; font-weight: 700; color: #fff;">🔥 TACTICAL MATCH INSIGHTS & COURT HEATMAP</span>
