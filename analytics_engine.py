@@ -102,7 +102,20 @@ class AnalyticsEngine:
             
         df.to_csv(filepath, index=False)
         print(f"[AnalyticsEngine] Exported {len(self.records)} events to CSV: {filepath}")
-        return filepath
+    def get_match_summary(self):
+        """Generates statistical summary of match performance."""
+        if len(self.records) == 0:
+            return {"status": "No events recorded"}
+
+        df = pd.DataFrame(self.records)
+        summary = {
+            "total_events": len(df),
+            "max_ball_speed_kmh": float(df["speed_kmh"].max()) if "speed_kmh" in df else 0.0,
+            "avg_ball_speed_kmh": float(df["speed_kmh"].mean()) if "speed_kmh" in df else 0.0,
+            "players_detected": list(df["player"].unique()) if "player" in df else [],
+            "strokes_breakdown": df["stroke"].value_counts().to_dict() if "stroke" in df else {}
+        }
+        return summary
 
     def compute_player_analytics(self, target_player="Player 1"):
         """
