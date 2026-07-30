@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tennis AI - Event Labeling & Accuracy Verification</title>
+  <link rel="stylesheet" href="style.css?v=25">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="app.js?v=25" defer></script>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-group">
+      <span class="logo-icon">🎾</span>
+      <h1>Tennis AI - Data Verification & Performance Analytics</h1>
+    </div>
+    <div class="view-switcher">
+      <button class="btn btn-primary" id="view-table-btn">📹 Video & Table</button>
+      <button class="btn" id="view-gallery-btn">🖼️ Shot Gallery</button>
+      <button class="btn" id="view-analytics-btn">📊 Player Analytics</button>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill">
+        <span>Verified:</span>
+        <span class="stat-value" id="hdr-verified-count">0 / 0</span>
+      </div>
+      <div class="stat-pill">
+        <span>Accuracy Score:</span>
+        <span class="stat-value" id="hdr-accuracy-pct">100%</span>
+      </div>
+      <button class="btn btn-success" id="btn-export-csv">💾 Export Verified CSV</button>
+    </div>
+  </header>
+
+  <!-- Pipeline Completion & Steps Indicator Banner -->
+  <div style="padding: 16px 24px 0 24px;">
+    <div class="pipeline-stepper-card">
+      <div class="stepper-title">
+        <span>⚙️ Tennis AI Pipeline Processing & Analytics Status</span>
+        <span class="status-badge ready" id="pipeline-ready-badge">✅ ALL ANALYTICS READY</span>
+      </div>
+      <div class="stepper-steps">
+        <div class="step-item complete">
+          <span class="step-icon">1</span>
+          <div class="step-info">
+            <span class="step-name">Video Loaded</span>
+            <span class="step-desc">1080p @ 30 FPS</span>
+          </div>
+        </div>
+        <div class="step-divider complete"></div>
+        <div class="step-item complete">
+          <span class="step-icon">2</span>
+          <div class="step-info">
+            <span class="step-name">Player Detection & Pose</span>
+            <span class="step-desc">5,136 Frames (MPS GPU)</span>
+          </div>
+        </div>
+        <div class="step-divider complete"></div>
+        <div class="step-item complete">
+          <span class="step-icon">3</span>
+          <div class="step-info">
+            <span class="step-name">Ball & Court Tracking</span>
+            <span class="step-desc">986 Events Extracted</span>
+          </div>
+        </div>
+        <div class="step-divider complete"></div>
+        <div class="step-item complete">
+          <span class="step-icon">4</span>
+          <div class="step-info">
+            <span class="step-name">Player Performance Analytics</span>
+            <span class="step-desc">SwingVision Engine Ready</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metrics Grid -->
+  <div style="padding: 16px 24px 0 24px;">
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-title">TOTAL EVENTS</span>
+        <span class="metric-val" id="metric-total">0</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-title">CONFIRMED (CORRECT)</span>
+        <span class="metric-val" style="color: var(--accent-success);" id="metric-confirmed">0</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-title">CORRECTED / EDITED</span>
+        <span class="metric-val" style="color: var(--accent-warning);" id="metric-corrected">0</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-title">ALGORITHM ACCURACY</span>
+        <span class="metric-val" style="color: var(--accent-primary);" id="metric-accuracy">0.0%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mode 1: Video & Table Layout -->
+  <div class="container" id="video-table-mode">
+    <!-- Left Column: Video Player & Controls -->
+    <div class="card">
+      <div class="card-title">
+        <span>📹 Frame Video Inspector</span>
+        <span id="current-frame-badge" style="font-family: monospace; font-size: 14px; color: var(--accent-primary);">Frame: 0</span>
+      </div>
+
+      <div class="video-wrapper">
+        <video id="match-video" controls preload="auto">
+          <source src="/api/video" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-overlay-badge" id="video-overlay">
+          <span id="overlay-event-text">No Event Selected</span>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="player-controls">
+        <div class="btn-group">
+          <button class="btn" id="btn-prev-5">« -5 Frames</button>
+          <button class="btn" id="btn-prev-1">‹ -1 Frame</button>
+          <button class="btn btn-primary" id="btn-play-pause">▶ Play / Pause</button>
+          <button class="btn" id="btn-next-1">+1 Frame ›</button>
+          <button class="btn" id="btn-next-5">+5 Frames »</button>
+        </div>
+        <span class="scrub-info" id="scrub-time">00:00.00</span>
+      </div>
+
+      <!-- Edit Panel -->
+      <div class="edit-panel" id="edit-form-panel">
+        <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--text-main);">✏️ Edit Detected Event</h3>
+        <div class="form-group">
+          <label>Player</label>
+          <select id="edit-player">
+            <option value="Player 1">Player 1 (Top / Far Court)</option>
+            <option value="Player 2">Player 2 (Bottom / Near Court)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Event Type</label>
+          <select id="edit-event-type">
+            <option value="Serve">Serve</option>
+            <option value="Hit">Hit</option>
+            <option value="Bounce">Bounce</option>
+            <option value="Winner">Winner</option>
+            <option value="Net">Net</option>
+            <option value="Fault">Fault</option>
+            <option value="Double Fault">Double Fault</option>
+            <option value="Ace">Ace</option>
+            <option value="Out">Out</option>
+            <option value="Rally End">Rally End</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Stroke</label>
+          <select id="edit-stroke">
+            <option value="Serve">Serve</option>
+            <option value="Forehand">Forehand</option>
+            <option value="Backhand">Backhand</option>
+            <option value="Volley">Volley</option>
+            <option value="Slice">Slice</option>
+            <option value="Drop">Drop</option>
+            <option value="Smash">Smash</option>
+            <option value="Lob">Lob</option>
+            <option value="Bounce">Bounce</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Spin</label>
+          <select id="edit-spin">
+            <option value="Topspin">Topspin</option>
+            <option value="Flat">Flat</option>
+            <option value="Backspin">Backspin</option>
+            <option value="None">None</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Result</label>
+          <select id="edit-result">
+            <option value="In Play">In Play</option>
+            <option value="Winner">Winner</option>
+            <option value="Out">Out</option>
+            <option value="Fault">Fault</option>
+          </select>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-danger" id="btn-delete-evt">🗑️ Delete</button>
+          <button class="btn btn-success" id="btn-confirm-evt">✅ Confirm Correct</button>
+          <button class="btn btn-primary" id="btn-save-evt">💾 Save Correction</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Data Table -->
+    <div class="card">
+      <div class="card-title">
+        <span>📋 Detected Events Telemetry</span>
+        <button class="btn" id="btn-add-evt">➕ Add Event at Frame</button>
+      </div>
+
+      <div class="filter-bar">
+        <select id="filter-player">
+          <option value="ALL">All Players</option>
+          <option value="Player 1">Player 1</option>
+          <option value="Player 2">Player 2</option>
+        </select>
+        <select id="filter-status">
+          <option value="ALL">All Statuses</option>
+          <option value="unverified">Unverified</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="corrected">Corrected</option>
+        </select>
+        <input type="text" id="search-input" placeholder="Search event..." style="flex:1;">
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Frame</th>
+              <th>Time</th>
+              <th>Player</th>
+              <th>Event</th>
+              <th>Stroke</th>
+              <th>Speed</th>
+              <th>Spin</th>
+            </tr>
+          </thead>
+          <tbody id="events-table-body">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mode 2: Frame-Wise Shot Gallery -->
+  <div class="gallery-container" id="gallery-mode" style="display: none; padding: 0 24px 24px 24px;">
+    <div class="card">
+      <div class="card-title">
+        <span>🖼️ Frame-Wise Event Snapshot Gallery</span>
+        <span style="font-size: 13px; color: var(--text-muted);">Inspect every detected shot side-by-side with its visual frame snapshot</span>
+      </div>
+      <div class="gallery-grid" id="gallery-grid">
+      </div>
+    </div>
+  </div>
+
+  <!-- Mode 3: Player Performance Analytics View Mode (SwingVision Style) -->
+  <div class="analytics-container" id="analytics-mode" style="display: none; padding: 0 24px 24px 24px;">
+    <!-- Player Selection Tabs -->
+    <div class="player-tab-switcher">
+      <button class="player-tab active" id="tab-p1">
+        <span class="player-avatar">AM</span>
+        <div class="player-tab-info">
+          <span class="player-tab-name" id="p1-name-txt">Player 1 (Near)</span>
+          <span class="player-tab-dist" id="p1-dist-txt">👟 716 ft | 134 shots</span>
+        </div>
+      </button>
+      <button class="player-tab" id="tab-p2">
+        <span class="player-avatar alt">OP</span>
+        <div class="player-tab-info">
+          <span class="player-tab-name" id="p2-name-txt">Player 2 (Opponent)</span>
+          <span class="player-tab-dist" id="p2-dist-txt">👟 847 ft | 123 shots</span>
+        </div>
+      </button>
+    </div>
+
+    <div id="analytics-error-banner" class="alert-error-banner" style="display: none; margin-bottom: 20px;"></div>
+
+    <!-- SwingVision Layout Grid -->
+    <div class="sv-grid">
+      
+      <!-- Card 1: Shot Spin Distribution -->
+      <div class="sv-card">
+        <div class="card-loader" id="loader-card-1" style="display: none;"><div class="mini-spinner"></div></div>
+        <div class="sv-card-title">Shot Spin Distribution <span class="card-status-tag" id="status-card-1">READY</span></div>
+        <div class="spin-progress-bar">
+          <div class="spin-segment spin-flat" id="bar-flat" style="width: 43%;">
+            <span>Flat<br><strong id="lbl-flat">43.0%</strong></span>
+          </div>
+          <div class="spin-segment spin-topspin" id="bar-topspin" style="width: 47.1%;">
+            <span>Topspin<br><strong id="lbl-topspin">47.1%</strong></span>
+          </div>
+          <div class="spin-segment spin-slice" id="bar-slice" style="width: 9.9%;">
+            <span>Slice<br><strong id="lbl-slice">9.9%</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Ball Speed Chart -->
+      <div class="sv-card">
+        <div class="card-loader" id="loader-card-2" style="display: none;"><div class="mini-spinner"></div></div>
+        <div class="sv-card-title">
+          <span>Ball Speed <span class="card-status-tag" id="status-card-2">READY</span></span>
+          <span class="sv-sub-stat">Avg: <strong id="val-avg-speed">49 MPH</strong> &nbsp;|&nbsp; Max: <strong id="val-max-speed">99 MPH</strong></span>
+        </div>
+        <div class="speed-histogram" id="speed-histogram-bars">
+        </div>
+      </div>
+
+      <!-- Card 3: Overall Performance -->
+      <div class="sv-card">
+        <div class="card-loader" id="loader-card-3" style="display: none;"><div class="mini-spinner"></div></div>
+        <div class="sv-card-title">Overall Performance <span class="card-status-tag" id="status-card-3">READY</span></div>
+        <div class="sv-stats-2x2">
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-shots-in">78%</span>
+            <span class="sv-stat-lbl">Shots In</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-shots-per-hr">361</span>
+            <span class="sv-stat-lbl">Shots Per Hour</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-longest-rally">15</span>
+            <span class="sv-stat-lbl">Longest Rally</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-rallies-5">24%</span>
+            <span class="sv-stat-lbl">Rallies Above 5 Shots</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 4: Serves Ad vs Deuce -->
+      <div class="sv-card">
+        <div class="card-loader" id="loader-card-4" style="display: none;"><div class="mini-spinner"></div></div>
+        <div class="sv-card-title">Serves (Ad vs Deuce Court) <span class="card-status-tag" id="status-card-4">READY</span></div>
+        <div class="sv-stats-2x2">
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-serves-ad-in">42%</span>
+            <span class="sv-stat-lbl">Serves In (Ad)</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-serves-deuce-in">33%</span>
+            <span class="sv-stat-lbl">Serves In (Deuce)</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-serve-spd-ad">64 mph</span>
+            <span class="sv-stat-lbl">Avg Serve Speed (Ad)</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-serve-spd-deuce">59 mph</span>
+            <span class="sv-stat-lbl">Avg Serve Speed (Deuce)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 5: Groundstrokes -->
+      <div class="sv-card">
+        <div class="card-loader" id="loader-card-5" style="display: none;"><div class="mini-spinner"></div></div>
+        <div class="sv-card-title">Groundstrokes <span class="card-status-tag" id="status-card-5">READY</span></div>
+        <div class="sv-stats-2x2">
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-fh-in">92%</span>
+            <span class="sv-stat-lbl">Forehands In</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-bh-in">85%</span>
+            <span class="sv-stat-lbl">Backhands In</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-fh-speed">46 mph</span>
+            <span class="sv-stat-lbl">Avg Forehand Speed</span>
+          </div>
+          <div class="sv-stat-box">
+            <span class="sv-stat-val" id="val-bh-speed">42 mph</span>
+            <span class="sv-stat-lbl">Avg Backhand Speed</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 7: 2D Tennis Court Shot & Impact Heatmap Visualizer -->
+      <div class="sv-card sv-card-wide" style="grid-column: 1 / -1;">
+        <div class="card-loader" id="loader-card-heatmap" style="display: none;"><div class="mini-spinner"></div></div>
+        <div class="sv-card-title" style="margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 18px; font-weight: 700; color: #fff;">🔥 TACTICAL MATCH INSIGHTS & COURT HEATMAP</span>
+            <span class="stepper-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600;">LIVE TELEMETRY ENGINE</span>
+          </div>
+          <div class="heatmap-controls">
+            <div class="btn-group">
+              <button class="btn btn-sm" id="hm-mode-hit">📍 Hitting Position</button>
+              <button class="btn btn-sm btn-primary" id="hm-mode-land">🎯 Ball Placement (Bounces)</button>
+            </div>
+            <select id="hm-filter-stroke" class="select-sm">
+              <option value="ALL">All Strokes</option>
+              <option value="Forehand">Forehand Only</option>
+              <option value="Backhand">Backhand Only</option>
+              <option value="Serve">Serve Only</option>
+              <option value="Volley">Volley Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="heatmap-wrapper">
+          <!-- Left Panel: 2D Horizontal Tennis Court Canvas -->
+          <div class="canvas-container-outer">
+            <div class="player-tag tag-left" id="lbl-player-left">PLAYER 1 (NEAR)</div>
+            <div class="player-tag tag-right" id="lbl-player-right">OPPONENT (FAR)</div>
+            <canvas id="heatmap-canvas" width="620" height="360"></canvas>
+          </div>
+
+          <!-- Right Panel: High-Impact Tactical Insights & Progress Bars -->
+          <div class="heatmap-insights-panel">
+            <h4 class="insights-title">💡 TACTICAL MATCH INSIGHTS</h4>
+
+            <!-- 3 Neon Glow Badges -->
+            <div class="neon-badges-grid">
+              <div class="neon-badge-card cyan">
+                <div class="badge-icon">👤</div>
+                <div class="badge-label">Dominant Baseline Zone</div>
+                <div class="badge-val" id="badge-val-dominant">Deuce Baseline</div>
+              </div>
+              <div class="neon-badge-card red">
+                <div class="badge-icon">🎯</div>
+                <div class="badge-label">Opponent Weakness</div>
+                <div class="badge-val" id="badge-val-weakness">Deep Backhand Corner</div>
+              </div>
+              <div class="neon-badge-card yellow">
+                <div class="badge-icon">🎾</div>
+                <div class="badge-label">High Ball Usage</div>
+                <div class="badge-val" id="badge-val-usage">Deep Court 72%</div>
+              </div>
+            </div>
+
+            <!-- Progress Bar Analytics Breakdown -->
+            <div class="telemetry-progress-grid">
+              <!-- Forehand Placement -->
+              <div class="progress-card">
+                <div class="card-subtitle">Forehand Placement</div>
+                <div class="bar-item">
+                  <div class="bar-header"><span>Down-the-Line</span><span id="txt-fh-dtl">68%</span></div>
+                  <div class="bar-bg"><div class="bar-fill cyan" id="fill-fh-dtl" style="width: 68%;"></div></div>
+                </div>
+                <div class="bar-item">
+                  <div class="bar-header"><span>Cross-Court</span><span id="txt-fh-cc">32%</span></div>
+                  <div class="bar-bg"><div class="bar-fill cyan" id="fill-fh-cc" style="width: 32%;"></div></div>
+                </div>
+              </div>
+
+              <!-- Serve Density -->
+              <div class="progress-card">
+                <div class="card-subtitle">Serve Density</div>
+                <div class="bar-item">
+                  <div class="bar-header"><span>Wide Serve</span><span id="txt-serve-wide">45%</span></div>
+                  <div class="bar-bg"><div class="bar-fill blue" id="fill-serve-wide" style="width: 45%;"></div></div>
+                </div>
+                <div class="bar-item">
+                  <div class="bar-header"><span>T-Serve</span><span id="txt-serve-t">30%</span></div>
+                  <div class="bar-bg"><div class="bar-fill blue" id="fill-serve-t" style="width: 30%;"></div></div>
+                </div>
+              </div>
+
+              <!-- Shot Depth -->
+              <div class="progress-card">
+                <div class="card-subtitle">Shot Depth</div>
+                <div class="bar-item">
+                  <div class="bar-header"><span>Deep Baseline</span><span id="txt-depth-base">72%</span></div>
+                  <div class="bar-bg"><div class="bar-fill yellow" id="fill-depth-base" style="width: 72%;"></div></div>
+                </div>
+                <div class="bar-item">
+                  <div class="bar-header"><span>Mid-Court / Net</span><span id="txt-depth-mid">28%</span></div>
+                  <div class="bar-bg"><div class="bar-fill yellow" id="fill-depth-mid" style="width: 28%;"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Heatmap Gradient Scale Legend Bar -->
+            <div class="heatmap-legend">
+              <div class="legend-labels"><span>LOW DENSITY</span><span>HIGH DENSITY 🔥</span></div>
+              <div class="heatmap-gradient-bar"></div>
+              <div class="legend-ticks"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30+ Bounces</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>
