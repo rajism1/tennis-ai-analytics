@@ -266,13 +266,16 @@ class AnalyticsEngine:
             land = row.get("landing_court_position_meters", None)
             stroke = str(row.get("stroke", "Hit"))
 
-            if pos and len(pos) == 2:
+            pos_valid = isinstance(pos, (list, tuple, np.ndarray)) and len(pos) == 2 and not any(pd.isna(x) for x in pos)
+            land_valid = isinstance(land, (list, tuple, np.ndarray)) and len(land) == 2 and not any(pd.isna(x) for x in land)
+
+            if pos_valid:
                 c = normalize_m_to_court(pos[0], pos[1])
                 hit_coords.append({"x": c[0], "y": c[1], "stroke": stroke})
             else:
                 hit_coords.append({"x": 0.35, "y": 0.85, "stroke": stroke})
 
-            if land and len(land) == 2:
+            if land_valid:
                 c = normalize_m_to_court(land[0], land[1])
                 landing_coords.append({"x": c[0], "y": c[1], "stroke": stroke})
             else:

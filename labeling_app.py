@@ -98,6 +98,11 @@ class LabelingHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 <script>
   window.INITIAL_ANALYTICS_P1 = {json.dumps(data_p1)};
   window.INITIAL_ANALYTICS_P2 = {json.dumps(data_p2)};
+  document.addEventListener('DOMContentLoaded', () => {{
+    if (typeof renderPlayerAnalyticsUI === 'function') {{
+      renderPlayerAnalyticsUI(window.INITIAL_ANALYTICS_P1);
+    }}
+  }});
 </script>
 </body>"""
 
