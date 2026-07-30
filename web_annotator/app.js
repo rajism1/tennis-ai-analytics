@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadEvents();
   loadPlayerAnalytics("Player 1");
   setupEventListeners();
+  drawTennisCourtHeatmap();
 });
 
 // Fetch events from Python backend
@@ -467,13 +468,12 @@ function renderHeatmapSection(data) {
 
 function drawTennisCourtHeatmap() {
   const canvas = document.getElementById("heatmap-canvas");
-  if (!canvas || !currentHeatmapData) return;
+  if (!canvas) return;
   const ctx = canvas.getContext("2d");
   const cw = canvas.width;
   const ch = canvas.height;
-  const hm = currentHeatmapData.heatmap || { hit_coords: [], landing_coords: [] };
 
-  // 1. Draw Outer Surroundings & Blue Tennis Court Surface
+  // 1. ALWAYS Draw Court Background & White Boundary Lines First
   ctx.fillStyle = "#0f172a";
   ctx.fillRect(0, 0, cw, ch);
 
@@ -538,6 +538,9 @@ function drawTennisCourtHeatmap() {
   ctx.moveTo(marginX + courtW, marginY + courtH / 2);
   ctx.lineTo(marginX + courtW - 12, marginY + courtH / 2);
   ctx.stroke();
+
+  if (!currentHeatmapData) return;
+  const hm = currentHeatmapData.heatmap || { hit_coords: [], landing_coords: [] };
 
   // 2. Select Heatmap Coordinates (Landing placement as primary)
   let points = currentHeatmapMode === "land" ? (hm.landing_coords || []) : (hm.hit_coords || []);

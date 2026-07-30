@@ -21,7 +21,12 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "output")
 JSON_PATH = os.path.join(OUTPUT_DIR, "tennis_match_analytics.json")
 CSV_PATH = os.path.join(OUTPUT_DIR, "tennis_match_analytics.csv")
 VERIFIED_CSV_PATH = os.path.join(OUTPUT_DIR, "tennis_match_analytics_verified.csv")
-VIDEO_PATH = os.path.join(BASE_DIR, "match.mp4")
+
+# Auto-detect match2.mp4 if present so video stream matches snapshot gallery
+if os.path.exists(os.path.join(BASE_DIR, "match2.mp4")):
+    VIDEO_PATH = os.path.join(BASE_DIR, "match2.mp4")
+else:
+    VIDEO_PATH = os.path.join(BASE_DIR, "match.mp4")
 
 class LabelingHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
