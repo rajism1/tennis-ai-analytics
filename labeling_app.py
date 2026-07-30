@@ -42,7 +42,10 @@ class LabelingHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         return super().translate_path(path)
 
     def do_GET(self):
-        if self.path.startswith("/api/events"):
+        req_path = self.path.split('?', 1)[0].split('#', 1)[0]
+        if req_path == "/" or req_path == "/index.html":
+            self.serve_index_html()
+        elif self.path.startswith("/api/events"):
             self.send_json_events()
         elif self.path.startswith("/api/player_analytics"):
             self.send_player_analytics()
@@ -54,6 +57,41 @@ class LabelingHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.serve_snapshot()
         else:
             super().do_GET()
+
+    def serve_index_html(self):
+        index_path = os.path.join(WEB_DIR, "index.html")
+        if not os.path.exists(index_path):
+            self.send_error(404, "index.html not found")
+            return
+
+        with open(index_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        engine = AnalyticsEngine()
+        if os.path.exists(JSON_PATH):
+            with open(JSON_PATH, "r", encoding="utf-8") as f:
+                try:
+                    engine.records = json.load(f)
+                except Exception:
+                    engine.records = []
+
+        data_p1 = engine.compute_player_analytics("Player 1")
+        data_p2 = engine.compute_player_analytics("Player 2")
+
+        injected_script = f"""
+<script>
+  window.INITIAL_ANALYTICS_P1 = {json.dumps(data_p1)};
+  window.INITIAL_ANALYTICS_P2 = {json.dumps(data_p2)};
+</script>
+</body>"""
+
+        html_content = html_content.replace("</body>", injected_script)
+
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(html_content.encode("utf-8"))))
+        self.end_headers()
+        self.wfile.write(html_content.encode("utf-8"))
 
     def end_headers(self):
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")

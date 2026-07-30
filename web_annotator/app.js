@@ -410,17 +410,29 @@ function hideAnalyticsError() {
   if (banner) banner.style.display = "none";
 }
 
-// Fetch and Render SwingVision Player Analytics
 async function loadPlayerAnalytics(playerId = "Player 1") {
   hideAnalyticsError();
-  showAnalyticsLoader();
+
+  if (window.INITIAL_ANALYTICS_P1 && window.INITIAL_ANALYTICS_P2) {
+    analyticsCache["Player 1"] = window.INITIAL_ANALYTICS_P1;
+    analyticsCache["Player 2"] = window.INITIAL_ANALYTICS_P2;
+  }
 
   if (analyticsCache["Player 1"] && analyticsCache["Player 2"]) {
+    const dataP1 = analyticsCache["Player 1"];
+    const dataP2 = analyticsCache["Player 2"];
+    const elP1 = document.getElementById("p1-dist-txt");
+    if (elP1) elP1.innerText = `👟 ${dataP1.distance_feet} ft | ${dataP1.total_shots} shots`;
+    const elP2 = document.getElementById("p2-dist-txt");
+    if (elP2) elP2.innerText = `👟 ${dataP2.distance_feet} ft | ${dataP2.total_shots} shots`;
+
     const cachedData = analyticsCache[playerId] || analyticsCache["Player 1"];
     renderPlayerAnalyticsUI(cachedData);
     hideAnalyticsLoader();
     return;
   }
+
+  showAnalyticsLoader();
 
   try {
     const controller = new AbortController();
