@@ -16,7 +16,7 @@ COCO_KEYPOINTS = {
 def calculate_3point_angle(a, b, c):
     """
     Computes 2D angle (in degrees) at joint vertex 'b' formed by vectors ba and bc.
-    Returns angle between 0.0 and 180.0 degrees.
+    Returns interior joint angle between 0.0 and 180.0 degrees.
     """
     if a is None or b is None or c is None:
         return 0.0
@@ -37,32 +37,40 @@ def calculate_3point_angle(a, b, c):
 
 def wrist_height(keypoints, side="right"):
     """
-    Computes vertical wrist height relative to shoulder height, normalized by torso length.
-    In image space (Y grows downwards), higher wrist in physical space yields higher positive values.
+    Computes normalized wrist height relative to standing player height.
+    Height above ground = (ankle_y - wrist_y) / (ankle_y - head_y)
+    Returns positive value:
+      ~0.7-0.8 at shoulder height
+      ~1.0 at head height
+      ~1.1-1.3 at full toss / contact reach
     """
     if keypoints is None or len(keypoints) < 17:
-        return 0.0
+        return 1.0
 
     w_idx = COCO_KEYPOINTS["right_wrist"] if side == "right" else COCO_KEYPOINTS["left_wrist"]
-    s_idx = COCO_KEYPOINTS["right_shoulder"] if side == "right" else COCO_KEYPOINTS["left_shoulder"]
-    h_idx = COCO_KEYPOINTS["right_hip"] if side == "right" else COCO_KEYPOINTS["left_hip"]
+    head_idx = COCO_KEYPOINTS["nose"]
+    a_idx = COCO_KEYPOINTS["right_ankle"] if side == "right" else COCO_KEYPOINTS["left_ankle"]
 
-    wrist = keypoints[w_idx]
-    shoulder = keypoints[s_idx]
-    hip = keypoints[h_idx]
+    wrist_y = keypoints[w_idx][1]
+    head_y = keypoints[head_idx][1]
+    ankle_y = keypoints[a_idx][1]
 
-    torso_len = abs(hip[1] - shoulder[1])
-    if torso_len < 1e-3:
-        torso_len = 100.0
+    player_h = abs(ankle_y - head_y)
+    if player_h < 1.0:
+        s_idx = COCO_KEYPOINTS["right_shoulder"] if side == "right" else COCO_KEYPOINTS["left_shoulder"]
+        h_idx = COCO_KEYPOINTS["right_hip"] if side == "right" else COCO_KEYPOINTS["left_hip"]
+        sh_h = abs(keypoints[h_idx][1] - keypoints[s_idx][1])
+        player_h = sh_h * 2.5 if sh_h > 1.0 else 200.0
 
-    # Inverted Y: (shoulder_y - wrist_y) / torso_length
-    norm_h = (shoulder[1] - wrist[1]) / torso_len
-    return float(norm_h)
+    wrist_h_above_ground = ankle_y - wrist_y
+    norm_h = wrist_h_above_ground / player_h
+
+    return float(round(norm_h, 2))
 
 
 def knee_angle(keypoints, side="right"):
     """
-    Computes knee flexion angle (hip-knee-ankle) in degrees.
+    Computes interior knee flexion angle (hip-knee-ankle) in degrees.
     Fully extended leg ~ 180 deg, bent knee ~ 110-130 deg.
     """
     if keypoints is None or len(keypoints) < 17:
@@ -77,7 +85,7 @@ def knee_angle(keypoints, side="right"):
 
 def elbow_angle(keypoints, side="right"):
     """
-    Computes elbow joint angle (shoulder-elbow-wrist) in degrees.
+    Computes interior elbow joint angle (shoulder-elbow-wrist) in degrees.
     Fully extended arm ~ 160-180 deg, trophy load angle ~ 90-120 deg.
     """
     if keypoints is None or len(keypoints) < 17:
@@ -119,8 +127,8 @@ def wrist_velocity(keypoints_sequence, side="right", fps=30.0):
 
 def hip_shoulder_separation(keypoints):
     """
-    Computes rotational angle separation (in degrees) between hip line and shoulder line.
-    Measures torso coil / separation angle.
+    Computes rotational coil angle separation (in degrees) between hip line and shoulder line.
+    Measures angle between 2D shoulder vector (R_shoulder - L_shoulder) and 2D hip vector (R_hip - L_hip).
     """
     if keypoints is None or len(keypoints) < 17:
         return 0.0
@@ -128,14 +136,19 @@ def hip_shoulder_separation(keypoints):
     ls, rs = keypoints[COCO_KEYPOINTS["left_shoulder"]], keypoints[COCO_KEYPOINTS["right_shoulder"]]
     lh, rh = keypoints[COCO_KEYPOINTS["left_hip"]], keypoints[COCO_KEYPOINTS["right_hip"]]
 
-    shoulder_angle = math.atan2(rs[1] - ls[1], rs[0] - ls[0])
-    hip_angle = math.atan2(rh[1] - lh[1], rh[0] - lh[0])
+    s_vec = np.array([rs[0] - ls[0], rs[1] - ls[1]], dtype=np.float64)
+    h_vec = np.array([rh[0] - lh[0], rh[1] - lh[1]], dtype=np.float64)
 
-    diff_deg = abs(math.degrees(shoulder_angle - hip_angle)) % 360.0
-    if diff_deg > 180.0:
-        diff_deg = 360.0 - diff_deg
+    norm_s = np.linalg.norm(s_vec)
+    norm_h = np.linalg.norm(h_vec)
 
-    return float(diff_deg)
+    if norm_s < 1e-6 or norm_h < 1e-6:
+        return 0.0
+
+    cosine_angle = np.dot(s_vec, h_vec) / (norm_s * norm_h)
+    angle_deg = float(np.degrees(np.arccos(np.clip(cosine_angle, -1.0, 1.0))))
+
+    return float(round(angle_deg, 1))
 
 
 def center_of_mass_estimate(keypoints):

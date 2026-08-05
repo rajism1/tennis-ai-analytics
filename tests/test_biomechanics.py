@@ -77,14 +77,20 @@ class TestBiomechanicsSignals(unittest.TestCase):
         self.assertAlmostEqual(angle, 90.0, places=2)
 
     def test_wrist_height(self):
-        # Wrist at Y=360, Shoulder at Y=200, Hip at Y=400 -> Wrist is lower than shoulder
-        h_down = wrist_height(self.kpts, side="right")
-        self.assertLess(h_down, 0.0)
+        # Head at Y=100, Ankle at Y=500 -> Player height = 400px
+        self.kpts[0] = [190, 100]  # Nose/head
+        self.kpts[16] = [240, 500] # R_ankle
+        self.kpts[10] = [250, 200] # R_wrist at shoulder level (Y=200)
 
-        # Move wrist high above shoulder to Y=100
-        self.kpts[10] = [250, 100]
-        h_up = wrist_height(self.kpts, side="right")
-        self.assertGreater(h_up, 0.0)
+        # Wrist at shoulder height Y=200 -> Wrist height above ground = 300px, norm_h = 0.75
+        h_shoulder = wrist_height(self.kpts, side="right")
+        self.assertAlmostEqual(h_shoulder, 0.75, places=2)
+
+        # Move wrist high above head to Y=40 -> Wrist height above ground = 460px, norm_h = 1.15
+        self.kpts[10] = [250, 40]
+        h_high = wrist_height(self.kpts, side="right")
+        self.assertAlmostEqual(h_high, 1.15, places=2)
+        self.assertGreater(h_high, h_shoulder)
 
     def test_wrist_velocity(self):
         # Sequence of 3 frames where wrist moves 30 pixels right per frame at 30 fps
