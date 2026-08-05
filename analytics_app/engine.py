@@ -415,17 +415,25 @@ class AnalyticsEngine:
                 seq.append(k)
 
             phases = phase_engine.detect_phases(seq, start_frame=frame_idx - 10)
+
+            # Check phase chronological ordering validation
+            is_chronological = all(p_info.get("is_chronological", True) for p_info in phases.values())
+            if not is_chronological:
+                print(f"[PHASE ORDERING WARNING] Shot #{idx+1} ({event_id} @ frame {frame_idx}) rejected due to non-chronological phase detection. Excluding from scoring.")
+                continue
+
             res = rubric_engine.evaluate_shot(event_id, "serve", phases, seq)
             feedback = formatter.format_shot_feedback(res)
 
             res["feedback"] = feedback
-            res["serve_number"] = idx + 1
+            res["serve_number"] = len(evaluations) + 1
             res["frame_idx"] = frame_idx
             res["snapshot_filename"] = shot.get("snapshot_filename", f"snapshot_frame_{frame_idx:06d}.jpg")
 
             # Log debug output for raw feature values and distinct score
             raw_feats = {f["name"]: f["value"] for f in res.get("features", [])}
-            print(f"[BIOMECHANICS DEBUG] Shot #{idx+1} ({event_id} @ frame {frame_idx}): Score={res['overall_score']}, Features={raw_feats}, Faults={res['fault_tags']}")
+            phase_frames = {p: info["frame_idx"] for p, info in phases.items()}
+            print(f"[BIOMECHANICS DEBUG] Shot #{len(evaluations)+1} ({event_id} @ frame {frame_idx}): Score={res['overall_score']}, PhaseFrames={phase_frames}, Features={raw_feats}, Faults={res['fault_tags']}")
 
             evaluations.append(res)
 

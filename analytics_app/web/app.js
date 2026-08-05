@@ -1044,7 +1044,16 @@ function drawSkeletonOverlay(data) {
   ctx.arc(r_elb[0], r_elb[1], 20, Math.PI * 0.8, Math.PI * 1.6);
   ctx.stroke();
 
+  // Extract measured elbow angle from shared shot evaluation data
+  let elbowVal = "82.0";
+  if (data && data.features) {
+    const ef = data.features.find(f => f.name === "elbow_angle");
+    if (ef && ef.value !== undefined) {
+      elbowVal = ef.value;
+    }
+  }
+
   ctx.fillStyle = "#f43f5e";
   ctx.font = "bold 12px Inter, sans-serif";
-  ctx.fillText("Elbow: 82° (Target: 90–120°)", r_elb[0] + 15, r_elb[1] - 10);
+  ctx.fillText(`Elbow: ${elbowVal}° (Target: 90–120°)`, r_elb[0] + 15, r_elb[1] - 10);
 }

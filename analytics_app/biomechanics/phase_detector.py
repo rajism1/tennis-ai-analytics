@@ -1,6 +1,7 @@
 """
 Generic Phase Segmentation Engine
 Segments biomechanical sub-phases over pose keypoint time-series based on declarative PhaseDetectorConfig rules.
+Enforces strict chronological sequence validation across phase boundaries.
 """
 
 from typing import List, Dict, Any, Optional
@@ -68,7 +69,7 @@ SERVE_PHASE_CONFIGS = [
         signal="knee_angle",
         extremum="min",
         search_window=[0.20, 0.50],
-        constraint=None
+        constraint="must_occur_after:ball_toss"
     ),
     PhaseDetectorConfig(
         phase_name="acceleration",
@@ -81,8 +82,8 @@ SERVE_PHASE_CONFIGS = [
         phase_name="contact",
         signal="wrist_height",
         extremum="max",
-        search_window=[0.40, 0.75],
-        constraint="must_occur_after:trophy_load"
+        search_window=[0.45, 0.75],
+        constraint="must_occur_after:acceleration"
     ),
     PhaseDetectorConfig(
         phase_name="follow_through",
@@ -107,7 +108,7 @@ class PhaseDetectorEngine:
     ) -> Dict[str, Dict[str, Any]]:
         """
         Segments frame indices for each biomechanical phase over keypoints_sequence.
-        Returns dict mapping phase_name -> {"frame_idx": int, "relative_idx": int, "signal_value": float}.
+        Returns dict mapping phase_name -> {"frame_idx": int, "relative_idx": int, "signal_value": float, "is_chronological": bool}.
         """
         num_frames = len(keypoints_sequence)
         if num_frames == 0:
@@ -169,5 +170,24 @@ class PhaseDetectorEngine:
                 "relative_idx": best_rel_idx,
                 "signal_value": round(best_val, 2)
             }
+
+        # Validate strict chronological ordering
+        expected_order = ["stance", "ball_toss", "trophy_load", "acceleration", "contact", "follow_through"]
+        prev_idx = -1
+        is_chronological = True
+        for p in expected_order:
+            if p in detected_phases:
+                cur_idx = detected_phases[p]["relative_idx"]
+                if cur_idx <= prev_idx:
+                    is_chronological = False
+                    break
+                prev_idx = cur_idx
+
+        for p in detected_phases:
+            detected_phases[p]["is_chronological"] = is_chronological
+
+        if not is_chronological:
+            phase_frames = {p: detected_phases[p]["frame_idx"] for p in detected_phases}
+            print(f"[PHASE ORDERING WARNING] Out-of-order phase frames detected for shot starting at frame {start_frame}: {phase_frames}")
 
         return detected_phases
