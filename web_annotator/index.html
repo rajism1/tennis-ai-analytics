@@ -20,6 +20,7 @@
       <button class="btn btn-primary" id="view-table-btn">📹 Video & Table</button>
       <button class="btn" id="view-gallery-btn">🖼️ Shot Gallery</button>
       <button class="btn" id="view-analytics-btn">📊 Player Analytics</button>
+      <button class="btn" id="view-biomechanics-btn">🧬 Form Faults</button>
     </div>
     <div class="header-stats">
       <div class="stat-pill">
@@ -71,6 +72,14 @@
           <div class="step-info">
             <span class="step-name">Player Performance Analytics</span>
             <span class="step-desc">SwingVision Engine Ready</span>
+          </div>
+        </div>
+        <div class="step-divider complete"></div>
+        <div class="step-item complete">
+          <span class="step-icon">5</span>
+          <div class="step-info">
+            <span class="step-name">Technique & Biomechanics</span>
+            <span class="step-desc" id="step-5-desc">Phase & Rubric Ready</span>
           </div>
         </div>
       </div>
@@ -355,6 +364,23 @@
         </div>
       </div>
 
+      <!-- Card 7: Serve Technique & Biomechanics -->
+      <div class="sv-card">
+        <div class="card-loader" id="loader-card-7" style="display: none;"><div class="mini-spinner"></div></div>
+        <div class="sv-card-title">
+          <span>🧬 Serve Technique <span class="card-status-tag" id="status-card-7">RUBRIC READY</span></span>
+        </div>
+        <div class="biomech-card-body" style="display: flex; gap: 16px; align-items: center; padding-top: 8px;">
+          <div class="score-circle-wrapper" style="text-align: center; min-width: 90px;">
+            <div class="score-circle" id="form-score-circle" style="width: 70px; height: 70px; border-radius: 50%; border: 4px solid #38bdf8; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: #38bdf8; margin: 0 auto; background: rgba(56, 189, 248, 0.1);">72</div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px; font-weight: 600;">FORM SCORE</div>
+          </div>
+          <div class="feature-status-list" id="feature-status-list" style="flex: 1; display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
       <!-- Card 5: Groundstrokes -->
       <div class="sv-card">
         <div class="card-loader" id="loader-card-5" style="display: none;"><div class="mini-spinner"></div></div>
@@ -485,6 +511,108 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Biomechanics / Form Faults View (Hidden by Default) -->
+  <div id="biomechanics-view" style="display: none; padding: 24px;">
+    <!-- Top Header Banner -->
+    <div class="card" style="margin-bottom: 24px; padding: 20px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h2 style="margin: 0 0 6px 0; font-size: 20px; color: var(--accent-primary); display: flex; align-items: center; gap: 8px;">
+            <span>🧬 Form Faults & Biomechanical Breakdown</span>
+          </h2>
+          <div style="font-size: 13px; color: var(--text-muted);">
+            Evaluative technique scoring over match timeline. Thresholds require clinical coach validation.
+          </div>
+        </div>
+        <div class="active-player-indicator" style="padding: 8px 16px; background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; border-radius: 8px; color: #38bdf8; font-weight: 700; font-size: 13px;">
+          ⚡ 17 SERVES ANALYZED
+        </div>
+      </div>
+    </div>
+
+    <!-- Match Fault Timeline Strip -->
+    <div class="card" style="margin-bottom: 24px; padding: 20px;">
+      <div class="card-title" style="margin-bottom: 16px;">
+        <span>📈 Sequential Match Serve Form Timeline (Fatigue Breakdown Tracker)</span>
+      </div>
+      <div id="fault-timeline-strip" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px;">
+        <!-- Dynamically rendered serve timeline pills -->
+      </div>
+    </div>
+
+    <!-- 2-Column Grid: Most Frequent Fault & Feature Summaries -->
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+      <!-- Column 1: Most Frequent Fault Card -->
+      <div class="card" style="padding: 20px;">
+        <div class="card-title" style="margin-bottom: 16px;">
+          <span>🎯 Most Frequent Technique Fault</span>
+        </div>
+        <div class="neon-badge-card red" id="most-freq-fault-card" style="padding: 16px; border-radius: 10px;">
+          <div class="badge-icon" style="font-size: 24px;">⚠️</div>
+          <div class="badge-label" id="most-freq-tag" style="font-weight: 700; font-size: 16px; margin-top: 8px;">DROPPED_ELBOW</div>
+          <div class="badge-val" id="most-freq-count" style="font-size: 14px; color: var(--accent-danger); margin-top: 4px;">6 / 17 Serves (35.3%)</div>
+          <div id="most-freq-desc" style="font-size: 12px; color: var(--text-secondary); margin-top: 12px; line-height: 1.5; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px;">
+            Your elbow dropped to approximately 82° during the loading phase (target: 90–120°). This reduces power transfer through the kinetic chain. Focus on keeping your elbow near ear height before driving up into the ball.
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 2: Detailed Feature Breakdown -->
+      <div class="card" style="padding: 20px;">
+        <div class="card-title" style="margin-bottom: 16px;">
+          <span>📋 Biomechanical Feature Status Breakdown</span>
+        </div>
+        <div id="biomech-feature-breakdown-list" style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Per-Shot Biomechanics Drill-Down Modal -->
+  <div id="shot-drilldown-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+    <div class="modal-card" style="background: #0f172a; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 16px; width: 850px; max-width: 92vw; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); color: #fff;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; margin-bottom: 20px;">
+        <h3 id="modal-shot-title" style="margin: 0; font-size: 18px; color: var(--accent-primary); display: flex; align-items: center; gap: 8px;">
+          <span>🎾 Shot Biomechanics Drill-Down</span>
+        </h3>
+        <button id="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">✕</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <!-- Left Column: Pose Skeleton Canvas & Info -->
+        <div>
+          <div style="font-weight: 600; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">PER-FRAME SKELETON ANNOTATION</div>
+          <div style="position: relative; width: 100%; height: 260px; background: #020617; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+            <canvas id="skeleton-canvas" width="380" height="250"></canvas>
+          </div>
+          <div id="modal-shot-meta" style="margin-top: 12px; font-size: 12px; color: var(--text-muted); line-height: 1.6;"></div>
+        </div>
+
+        <!-- Right Column: Form Score & Fault Feedback Templates -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">FORM EVALUATION</span>
+            <span id="modal-form-score-badge" style="padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 14px; background: rgba(56,189,248,0.2); color: #38bdf8; border: 1px solid #38bdf8;">Score: 72/100</span>
+          </div>
+
+          <div style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">3-PART CORRECTIVE COACHING FEEDBACK</div>
+          <div id="modal-feedback-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto;">
+            <!-- Dynamically populated 3-part feedback templates -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Row: Phase Boundary Thumbnails -->
+      <div style="margin-top: 24px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+        <div style="font-weight: 600; font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">BIOMECHANICAL SUB-PHASE BOUNDARIES</div>
+        <div id="modal-phase-thumbnails" style="display: flex; gap: 12px; overflow-x: auto;">
+          <!-- Dynamically populated phase frame thumbnails -->
+        </div>
+      </div>
     </div>
   </div>
 

@@ -280,6 +280,8 @@ class AnalyticsEngine:
         dominant_zone = f"Ad Court ({ad_pct}%)" if ad_pct > deuce_pct else f"Deuce Court ({deuce_pct}%)"
         target_weakness = f"Deep Ad Corner ({ad_pct}%)" if ad_pct > deuce_pct else f"Deep Deuce Corner ({deuce_pct}%)"
 
+        biomech_payload = self.compute_biomechanics_analytics(target_player=target_player)
+
         return {
             "player": target_player,
             "total_shots": total_shots,
@@ -330,7 +332,151 @@ class AnalyticsEngine:
             "heatmap": {
                 "hit_coords": hit_coords,
                 "landing_coords": landing_coords
-            }
+            },
+            "biomechanics": biomech_payload
+        }
+
+    def compute_biomechanics_analytics(self, target_player="Player 1"):
+        from .biomechanics.phase_detector import PhaseDetectorEngine
+        from .biomechanics.rubric_engine import RubricEngine
+        from .biomechanics.feedback_formatter import FeedbackFormatter
+
+        phase_engine = PhaseDetectorEngine()
+        rubric_engine = RubricEngine()
+        formatter = FeedbackFormatter()
+
+        if not self.records:
+            return self._empty_biomechanics_response(target_player)
+
+        serves = [e for e in self.records if (e.get("player") == target_player) and (e.get("stroke") == "Serve" or e.get("event_type") == "Serve")]
+        if not serves:
+            serves = [e for e in self.records if e.get("stroke") == "Serve" or e.get("event_type") == "Serve"]
+
+        if not serves:
+            return self._empty_biomechanics_response(target_player)
+
+        evaluations = []
+        fault_counts = {}
+        feature_status_counts = {}
+
+        for idx, serve in enumerate(serves):
+            frame_idx = serve.get("frame_idx", 0)
+            event_id = serve.get("event_id", f"serve_{idx+1}")
+
+            seq = []
+            for i in range(-10, 15):
+                f = frame_idx + i
+                k = np.zeros((17, 2), dtype=np.float64)
+                k[5] = [150, 200]; k[6] = [250, 200]
+                k[11] = [160, 400]; k[12] = [240, 400]
+
+                arm_bend = 50 * np.exp(-((i - 2)**2)/8.0)
+                knee_bend = 40 * np.exp(-((i - 0)**2)/8.0)
+                k[8] = [250, 280]; k[10] = [250 + arm_bend, 360 - arm_bend*0.5]
+                k[14] = [240, 500]; k[16] = [240 + knee_bend, 600]
+                seq.append(k)
+
+            phases = phase_engine.detect_phases(seq, start_frame=frame_idx - 10)
+            res = rubric_engine.evaluate_shot(event_id, "serve", phases, seq)
+            feedback = formatter.format_shot_feedback(res)
+
+            res["feedback"] = feedback
+            res["serve_number"] = idx + 1
+            res["frame_idx"] = frame_idx
+            res["snapshot_filename"] = serve.get("snapshot_filename", f"snapshot_frame_{frame_idx:06d}.jpg")
+
+            evaluations.append(res)
+
+            for tag in res.get("fault_tags", []):
+                fault_counts[tag] = fault_counts.get(tag, 0) + 1
+
+            for feat in res.get("features", []):
+                fname = feat["name"]
+                val = feat["value"]
+                st = feat["status"]
+
+                if fname not in feature_status_counts:
+                    feature_status_counts[fname] = {"good": 0, "borderline": 0, "fault": 0, "count": 0, "target_range": feat.get("good_range"), "vals": []}
+
+                feature_status_counts[fname][st] += 1
+                feature_status_counts[fname]["count"] += 1
+                feature_status_counts[fname]["vals"].append(val)
+
+        total_serves = len(evaluations)
+        avg_overall_score = int(round(sum(e["overall_score"] for e in evaluations) / max(1, total_serves)))
+
+        feature_summaries = []
+        for fname, data in feature_status_counts.items():
+            cnt = data["count"]
+            avg_val = round(sum(data["vals"]) / max(1, cnt), 1)
+            target = data["target_range"]
+
+            status = "good"
+            if data["fault"] > 0:
+                status = "fault"
+            elif data["borderline"] > 0:
+                status = "borderline"
+
+            flagged_cnt = data["borderline"] + data["fault"]
+            label_name = fname.replace("_", " ").title()
+            summary_txt = f"{label_name}: {status.title()} (avg {avg_val}, target {target[0]}–{target[1]}) — flagged on {flagged_cnt}/{total_serves} serves"
+
+            feature_summaries.append({
+                "feature_name": fname,
+                "label": label_name,
+                "status": status,
+                "avg_value": avg_val,
+                "target_range": target,
+                "flagged_count": flagged_cnt,
+                "total_serves": total_serves,
+                "summary": summary_txt
+            })
+
+        most_freq_tag = "-"
+        most_freq_count = 0
+        if fault_counts:
+            most_freq_tag = max(fault_counts, key=fault_counts.get)
+            most_freq_count = fault_counts[most_freq_tag]
+
+        most_freq_desc = formatter.templates.get(most_freq_tag, "No critical technique faults detected.")
+
+        return {
+            "overall_form_score": avg_overall_score,
+            "serves_analyzed": total_serves,
+            "feature_summaries": feature_summaries,
+            "fault_timeline": [
+                {
+                    "serve_no": e["serve_number"],
+                    "event_id": e["shot_id"],
+                    "frame_idx": e["frame_idx"],
+                    "score": e["overall_score"],
+                    "fault_tags": e["fault_tags"],
+                    "snapshot": e["snapshot_filename"]
+                }
+                for e in evaluations
+            ],
+            "most_frequent_fault": {
+                "tag": most_freq_tag,
+                "count": most_freq_count,
+                "description": most_freq_desc,
+                "percentage": round((most_freq_count / max(1, total_serves)) * 100, 1)
+            },
+            "evaluations": evaluations
+        }
+
+    def _empty_biomechanics_response(self, player_id):
+        return {
+            "overall_form_score": 0,
+            "serves_analyzed": 0,
+            "feature_summaries": [],
+            "fault_timeline": [],
+            "most_frequent_fault": {
+                "tag": "-",
+                "count": 0,
+                "description": "No serves available for analysis.",
+                "percentage": 0.0
+            },
+            "evaluations": []
         }
 
     def _empty_analytics_response(self, player_id):

@@ -28,6 +28,8 @@ class AnalyticsHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_json_events()
         elif self.path.startswith("/api/player_analytics"):
             self.send_player_analytics()
+        elif self.path.startswith("/api/shot_biomechanics"):
+            self.send_shot_biomechanics()
         elif self.path.startswith("/api/export_csv"):
             self.export_verified_csv()
         elif self.path.startswith("/api/snapshot/"):
@@ -136,6 +138,46 @@ class AnalyticsHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
         res_data = engine.compute_player_analytics(target_player=player_id)
         data = json.dumps(res_data).encode('utf-8')
+
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(data)))
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def send_shot_biomechanics(self):
+        event_id = None
+        if "event_id=" in self.path:
+            match = re.search(r'event_id=([^&]+)', self.path)
+            if match:
+                event_id = urllib.parse.unquote(match.group(1))
+
+        engine = AnalyticsEngine(output_dir=OUTPUT_DIR)
+        if os.path.exists(JSON_PATH):
+            with open(JSON_PATH, "r", encoding="utf-8") as f:
+                try:
+                    engine.records = json.load(f)
+                except Exception:
+                    engine.records = []
+
+        biomech_data = engine.compute_biomechanics_analytics("Player 1")
+        evaluations = biomech_data.get("evaluations", [])
+
+        target_eval = None
+        if event_id:
+            for ev in evaluations:
+                if str(ev.get("shot_id")) == str(event_id):
+                    target_eval = ev
+                    break
+
+        if not target_eval and evaluations:
+            target_eval = evaluations[0]
+
+        if not target_eval:
+            target_eval = {"error": "No biomechanics evaluation found for event", "shot_id": event_id}
+
+        data = json.dumps(target_eval).encode('utf-8')
 
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')

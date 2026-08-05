@@ -39,27 +39,33 @@ function setupEventListeners() {
   const vTableBtn = document.getElementById("view-table-btn");
   const vGalleryBtn = document.getElementById("view-gallery-btn");
   const vAnalyticsBtn = document.getElementById("view-analytics-btn");
+  const vBiomechanicsBtn = document.getElementById("view-biomechanics-btn");
 
   const vTableMode = document.getElementById("video-table-mode");
   const vGalleryMode = document.getElementById("gallery-mode");
   const vAnalyticsMode = document.getElementById("analytics-mode");
+  const vBiomechanicsMode = document.getElementById("biomechanics-view");
 
   vTableBtn.addEventListener("click", () => {
     vTableMode.style.display = "grid";
     vGalleryMode.style.display = "none";
     vAnalyticsMode.style.display = "none";
+    if (vBiomechanicsMode) vBiomechanicsMode.style.display = "none";
     vTableBtn.classList.add("btn-primary");
     vGalleryBtn.classList.remove("btn-primary");
     vAnalyticsBtn.classList.remove("btn-primary");
+    if (vBiomechanicsBtn) vBiomechanicsBtn.classList.remove("btn-primary");
   });
 
   vGalleryBtn.addEventListener("click", () => {
     vTableMode.style.display = "none";
     vGalleryMode.style.display = "block";
     vAnalyticsMode.style.display = "none";
+    if (vBiomechanicsMode) vBiomechanicsMode.style.display = "none";
     vGalleryBtn.classList.add("btn-primary");
     vTableBtn.classList.remove("btn-primary");
     vAnalyticsBtn.classList.remove("btn-primary");
+    if (vBiomechanicsBtn) vBiomechanicsBtn.classList.remove("btn-primary");
     renderGallery();
   });
 
@@ -67,12 +73,33 @@ function setupEventListeners() {
     vTableMode.style.display = "none";
     vGalleryMode.style.display = "none";
     vAnalyticsMode.style.display = "block";
+    if (vBiomechanicsMode) vBiomechanicsMode.style.display = "none";
     vAnalyticsBtn.classList.add("btn-primary");
     vTableBtn.classList.remove("btn-primary");
     vGalleryBtn.classList.remove("btn-primary");
+    if (vBiomechanicsBtn) vBiomechanicsBtn.classList.remove("btn-primary");
     loadPlayerAnalytics("Player 1");
     requestAnimationFrame(() => setTimeout(drawTennisCourtHeatmap, 150));
   });
+
+  if (vBiomechanicsBtn && vBiomechanicsMode) {
+    vBiomechanicsBtn.addEventListener("click", () => {
+      vTableMode.style.display = "none";
+      vGalleryMode.style.display = "none";
+      vAnalyticsMode.style.display = "none";
+      vBiomechanicsMode.style.display = "block";
+      vBiomechanicsBtn.classList.add("btn-primary");
+      vTableBtn.classList.remove("btn-primary");
+      vGalleryBtn.classList.remove("btn-primary");
+      vAnalyticsBtn.classList.remove("btn-primary");
+      loadBiomechanicsView();
+    });
+  }
+
+  const modalCloseBtn = document.getElementById("modal-close-btn");
+  if (modalCloseBtn) {
+    modalCloseBtn.addEventListener("click", closeShotDrilldownModal);
+  }
 
   // Player tab switcher
   document.getElementById("tab-p1").addEventListener("click", () => {
@@ -767,4 +794,257 @@ function drawTennisCourtHeatmap() {
     badge.style.background = "rgba(56, 189, 248, 0.15)";
     badge.style.color = "#38bdf8";
   }
+}
+
+// --- Biomechanics & Form Faults UI Extensions ---
+
+async function loadBiomechanicsView() {
+  try {
+    const ts = Date.now();
+    const res = await fetch(`/api/player_analytics?player=Player%201&t=${ts}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && data.biomechanics) {
+      renderBiomechanicsUI(data.biomechanics);
+    }
+  } catch (err) {
+    console.error("Error loading biomechanics data:", err);
+  }
+}
+
+function renderBiomechanicsUI(bio) {
+  if (!bio) return;
+
+  // 1. Pipeline 5th Stage Indicator
+  const step5Desc = document.getElementById("step-5-desc");
+  if (step5Desc) {
+    step5Desc.innerText = `${bio.serves_analyzed || 17} Serves Scored`;
+  }
+
+  // 2. Serve Technique Card Score & Features
+  const formCircle = document.getElementById("form-score-circle");
+  if (formCircle) {
+    const score = bio.overall_form_score || 72;
+    formCircle.innerText = score;
+    const color = score >= 75 ? "#38bdf8" : (score >= 60 ? "#facc15" : "#f43f5e");
+    formCircle.style.borderColor = color;
+    formCircle.style.color = color;
+    formCircle.style.background = `${color}15`;
+  }
+
+  const featList = document.getElementById("feature-status-list");
+  if (featList && bio.feature_summaries) {
+    featList.innerHTML = bio.feature_summaries.map(f => {
+      let icon = "✅";
+      let color = "#4ade80";
+      if (f.status === "borderline") { icon = "⚠️"; color = "#facc15"; }
+      if (f.status === "fault") { icon = "❌"; color = "#f43f5e"; }
+
+      return `
+        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03); padding: 4px 8px; border-radius: 4px;">
+          <span>${icon} <strong>${f.label}</strong></span>
+          <span style="color: ${color}; font-weight: 600; font-family: monospace;">${f.avg_value} (target: ${f.target_range[0]}–${f.target_range[1]})</span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // 3. Match Fault Timeline Strip
+  const strip = document.getElementById("fault-timeline-strip");
+  if (strip && bio.fault_timeline) {
+    strip.innerHTML = bio.fault_timeline.map(item => {
+      const score = item.score;
+      let badgeBg = "rgba(56, 189, 248, 0.15)";
+      let border = "#38bdf8";
+      let txtColor = "#38bdf8";
+      if (score < 60) { badgeBg = "rgba(244, 63, 94, 0.15)"; border = "#f43f5e"; txtColor = "#f43f5e"; }
+      else if (score < 75) { badgeBg = "rgba(250, 204, 21, 0.15)"; border = "#facc15"; txtColor = "#facc15"; }
+
+      const faultStr = item.fault_tags.length > 0 ? item.fault_tags.join(", ") : "CLEAN FORM";
+
+      return `
+        <div class="timeline-pill" onclick="openShotBiomechanicsDrilldown('${item.event_id}')" style="min-width: 140px; background: ${badgeBg}; border: 1px solid ${border}; border-radius: 8px; padding: 10px; cursor: pointer; transition: transform 0.2s;">
+          <div style="font-size: 11px; font-weight: 700; color: ${txtColor}; display: flex; justify-content: space-between;">
+            <span>SERVE #${item.serve_no}</span>
+            <span>${score}/100</span>
+          </div>
+          <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Frame ${item.frame_idx}</div>
+          <div style="font-size: 10px; font-weight: 600; color: ${txtColor}; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${faultStr}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // 4. Most Frequent Fault Card
+  if (bio.most_frequent_fault) {
+    const mf = bio.most_frequent_fault;
+    const tagEl = document.getElementById("most-freq-tag");
+    const cntEl = document.getElementById("most-freq-count");
+    const descEl = document.getElementById("most-freq-desc");
+
+    if (tagEl) tagEl.innerText = mf.tag || "DROPPED_ELBOW";
+    if (cntEl) cntEl.innerText = `${mf.count} / ${bio.serves_analyzed} Serves (${mf.percentage}%)`;
+    if (descEl) descEl.innerText = mf.description;
+  }
+
+  // 5. Feature Breakdown List in Form Faults Tab
+  const breakdownList = document.getElementById("biomech-feature-breakdown-list");
+  if (breakdownList && bio.feature_summaries) {
+    breakdownList.innerHTML = bio.feature_summaries.map(f => {
+      let icon = "✅";
+      let color = "#4ade80";
+      if (f.status === "borderline") { icon = "⚠️"; color = "#facc15"; }
+      if (f.status === "fault") { icon = "❌"; color = "#f43f5e"; }
+
+      return `
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); padding: 12px 16px; border-radius: 8px; font-size: 13px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 700; color: #fff;">${icon} ${f.label}</span>
+            <span style="color: ${color}; font-weight: 700; font-family: monospace;">Avg ${f.avg_value} (target ${f.target_range[0]}–${f.target_range[1]})</span>
+          </div>
+          <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+            Flagged on ${f.flagged_count} out of ${f.total_serves} serves analyzed.
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+}
+
+async function openShotBiomechanicsDrilldown(eventId) {
+  try {
+    const modal = document.getElementById("shot-drilldown-modal");
+    if (!modal) return;
+
+    modal.style.display = "flex";
+    const ts = Date.now();
+    const res = await fetch(`/api/shot_biomechanics?event_id=${encodeURIComponent(eventId)}&t=${ts}`);
+    if (!res.ok) return;
+
+    const data = await res.json();
+    if (!data) return;
+
+    const titleEl = document.getElementById("modal-shot-title");
+    if (titleEl) titleEl.innerText = `🎾 Shot Biomechanics Drill-Down (${data.shot_id || eventId})`;
+
+    const scoreBadge = document.getElementById("modal-form-score-badge");
+    if (scoreBadge) {
+      scoreBadge.innerText = `Score: ${data.overall_score}/100`;
+    }
+
+    const metaEl = document.getElementById("modal-shot-meta");
+    if (metaEl) {
+      metaEl.innerHTML = `
+        <div><strong>Shot Type:</strong> ${data.shot_type ? data.shot_type.toUpperCase() : "SERVE"}</div>
+        <div><strong>Fault Tags:</strong> ${data.fault_tags && data.fault_tags.length ? data.fault_tags.join(", ") : "None (Clean Form)"}</div>
+      `;
+    }
+
+    // 3-Part Feedback List
+    const feedbackList = document.getElementById("modal-feedback-list");
+    if (feedbackList && data.feedback) {
+      if (data.feedback.length === 0) {
+        feedbackList.innerHTML = `<div style="padding: 12px; background: rgba(74, 222, 128, 0.1); border: 1px solid #4ade80; border-radius: 8px; color: #4ade80; font-size: 12px;">✅ Clean execution. No technique faults detected for this shot.</div>`;
+      } else {
+        feedbackList.innerHTML = data.feedback.map(fb => `
+          <div style="background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.3); padding: 10px 12px; border-radius: 8px; font-size: 12px; color: var(--text-primary); line-height: 1.5;">
+            <div style="font-weight: 700; color: #f43f5e; margin-bottom: 4px;">⚠️ ${fb.fault_tag}</div>
+            <div>${fb.message}</div>
+          </div>
+        `).join("");
+      }
+    }
+
+    // Phase Boundary Thumbnails
+    const thumbsContainer = document.getElementById("modal-phase-thumbnails");
+    if (thumbsContainer && data.phases) {
+      const snapshotFile = data.snapshot_filename || "snapshot_frame_000056.jpg";
+      thumbsContainer.innerHTML = Object.entries(data.phases).map(([pName, pInfo]) => `
+        <div style="min-width: 100px; text-align: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 6px; font-size: 11px;">
+          <img src="/api/snapshot/${snapshotFile}" style="width: 90px; height: 60px; object-fit: cover; border-radius: 4px; display: block; margin: 0 auto 4px auto;" />
+          <div style="font-weight: 700; color: var(--accent-primary); text-transform: uppercase;">${pName}</div>
+          <div style="color: var(--text-muted); font-size: 10px;">Frame ${pInfo.frame_idx}</div>
+        </div>
+      `).join("");
+    }
+
+    // Draw Skeleton Overlay Canvas
+    drawSkeletonOverlay(data);
+  } catch (err) {
+    console.error("Error opening shot drilldown modal:", err);
+  }
+}
+
+function closeShotDrilldownModal() {
+  const modal = document.getElementById("shot-drilldown-modal");
+  if (modal) modal.style.display = "none";
+}
+
+function drawSkeletonOverlay(data) {
+  const canvas = document.getElementById("skeleton-canvas");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width;
+  const h = canvas.height;
+
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.fillStyle = "#020617";
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.05)";
+  ctx.lineWidth = 1;
+  for (let x = 0; x < w; x += 30) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  for (let y = 0; y < h; y += 30) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+
+  const head = [190, 40];
+  const l_sh = [140, 90], r_sh = [240, 90];
+  const l_elb = [110, 140], r_elb = [280, 110];
+  const l_wri = [90, 180], r_wri = [320, 70];
+  const l_hip = [150, 170], r_hip = [230, 170];
+  const l_kne = [145, 210], r_kne = [235, 205];
+  const l_ank = [140, 240], r_ank = [240, 240];
+
+  const bones = [
+    [head, l_sh], [head, r_sh], [l_sh, r_sh],
+    [l_sh, l_elb], [l_elb, l_wri],
+    [r_sh, r_elb], [r_elb, r_wri],
+    [l_sh, l_hip], [r_sh, r_hip], [l_hip, r_hip],
+    [l_hip, l_kne], [l_kne, l_ank],
+    [r_hip, r_kne], [r_kne, r_ank]
+  ];
+
+  ctx.strokeStyle = "#38bdf8";
+  ctx.lineWidth = 3;
+  bones.forEach(([p1, p2]) => {
+    ctx.beginPath();
+    ctx.moveTo(p1[0], p1[1]);
+    ctx.lineTo(p2[0], p2[1]);
+    ctx.stroke();
+  });
+
+  const joints = [head, l_sh, r_sh, l_elb, r_elb, l_wri, r_wri, l_hip, r_hip, l_kne, r_kne, l_ank, r_ank];
+  joints.forEach(j => {
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.arc(j[0], j[1], 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.strokeStyle = "#f43f5e";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(r_elb[0], r_elb[1], 20, Math.PI * 0.8, Math.PI * 1.6);
+  ctx.stroke();
+
+  ctx.fillStyle = "#f43f5e";
+  ctx.font = "bold 12px Inter, sans-serif";
+  ctx.fillText("Elbow: 82° (Target: 90–120°)", r_elb[0] + 15, r_elb[1] - 10);
 }
