@@ -494,7 +494,7 @@ class AnalyticsEngine:
         for fs in feature_summaries:
             fname_lower = fs["feature_name"].lower()
             tag_lower = most_freq_tag.lower()
-            if fname_lower in tag_lower or ("elbow" in tag_lower and "elbow" in fname_lower) or ("knee" in tag_lower and "knee" in fname_lower) or ("toss" in tag_lower and "toss" in fname_lower) or ("coil" in tag_lower and "coil" in fname_lower):
+            if fname_lower in tag_lower or ("elbow" in tag_lower and "elbow" in fname_lower) or ("knee" in tag_lower and "knee" in fname_lower) or ("toss" in tag_lower and "toss" in fname_lower) or ("coil" in tag_lower and "coil" in fname_lower) or ("arm" in tag_lower and "extension" in fname_lower) or ("extension" in tag_lower and "extension" in fname_lower):
                 matching_feat = {"value": fs["avg_value"], "good_range": fs["target_range"]}
                 break
 
