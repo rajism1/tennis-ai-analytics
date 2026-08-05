@@ -61,35 +61,35 @@ SERVE_PHASE_CONFIGS = [
         phase_name="ball_toss",
         signal="wrist_height",
         extremum="max",
-        search_window=[0.10, 0.40],
+        search_window=[0.15, 0.35],
         constraint="must_occur_after:stance"
     ),
     PhaseDetectorConfig(
         phase_name="trophy_load",
         signal="knee_angle",
         extremum="min",
-        search_window=[0.20, 0.50],
+        search_window=[0.28, 0.48],
         constraint="must_occur_after:ball_toss"
     ),
     PhaseDetectorConfig(
         phase_name="acceleration",
         signal="wrist_velocity",
         extremum="velocity_peak",
-        search_window=[0.35, 0.65],
+        search_window=[0.38, 0.55],
         constraint="must_occur_after:trophy_load"
     ),
     PhaseDetectorConfig(
         phase_name="contact",
         signal="wrist_height",
         extremum="max",
-        search_window=[0.45, 0.75],
+        search_window=[0.44, 0.65],
         constraint="must_occur_after:acceleration"
     ),
     PhaseDetectorConfig(
         phase_name="follow_through",
         signal="wrist_height",
         extremum="min",
-        search_window=[0.65, 1.00],
+        search_window=[0.60, 1.00],
         constraint="must_occur_after:contact"
     )
 ]

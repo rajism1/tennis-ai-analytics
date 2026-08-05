@@ -402,11 +402,13 @@ class AnalyticsEngine:
                 if i < -4: # Stance
                     k[10] = [260, 220]
                     k[8] = [240, 240]
-                elif i < 0: # Trophy Load phase
+                elif i < 0: # Trophy Load phase (indices 6..9)
                     k[10] = [210, 120] # wrist
-                    k[8] = [210 + var_elbow * 0.5, 220] # elbow angle ~90-115 deg
-                elif i < 4: # Contact phase
-                    k[10] = [250, 10 - var_reach * 100] # wrist at apex
+                    k[8] = [210 + var_elbow * 0.5, 220] # bent elbow (~100-115 deg)
+                    k[14] = [285 + var_knee * 0.8, 410] # deep knee bend (~118-125 deg)
+                    k[6] = [265 + var_sep * 1.8, 250] # rotated shoulders (~25-35 deg torso coil)
+                elif i < 4: # Contact phase (indices 10..13)
+                    k[10] = [250, 10 - var_reach * 100] # wrist at apex (1.17x reach)
                     k[8] = [245, 100] # elbow angle ~165-180 deg (full extension)
                 else: # Follow through
                     k[10] = [110, 300]
