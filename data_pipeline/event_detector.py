@@ -3,7 +3,7 @@ Match Event Detection Engine
 Detects serve, hit, bounce, winner, net, fault, double fault, ace, rally end events with timeline management.
 """
 
-from .config import COURT_WIDTH_M, COURT_LENGTH_M
+from config import NET_POSITION_Y_M, COURT_WIDTH_M, COURT_LENGTH_M
 
 class EventDetector:
     def __init__(self, fps=30.0):
@@ -15,11 +15,19 @@ class EventDetector:
         self.events_history = []
 
     def process_frame(self, frame_idx, players, ball_info, poses, stroke_classifier):
+        """
+        Analyzes frame data to trigger discrete match events.
+        Returns triggered event dict or None.
+        """
         timestamp = frame_idx / self.fps
         triggered_event = None
 
         if len(players) == 0:
             return None
+
+        # Reset rally if point ended (no hit for >60 frames / 2 seconds)
+        if self.in_rally and (frame_idx - self.last_hit_frame > 60):
+            self.in_rally = False
 
         # 1. Detect Serve Event
         for p in players:
@@ -27,12 +35,13 @@ class EventDetector:
             pose = poses.get(p_id)
             stroke = stroke_classifier.classify_stroke(p_id, pose, ball_info)
             
-            if (stroke == "Serve" or frame_idx == 5) and not self.in_rally:
+            if (stroke == "Serve" or not self.in_rally) and not self.in_rally:
                 self.in_rally = True
-                self.rally_count = 1
+                self.rally_count += 1
                 self.last_hit_player = p_id
                 self.last_hit_frame = frame_idx
                 
+                # Check Ace / Serve Speed
                 speed = ball_info["speed_kmh"]
                 event_type = "Ace" if speed > 180 else "Serve"
 
@@ -41,8 +50,10 @@ class EventDetector:
                     "timestamp_sec": round(timestamp, 2),
                     "frame_idx": frame_idx,
                     "player": p_id,
+                    "player_id": p_id,
                     "event_type": event_type,
                     "stroke": "Serve",
+                    "stroke_type": "Serve",
                     "speed_kmh": speed,
                     "ball_height_m": ball_info["height_m"],
                     "spin": stroke_classifier.estimate_spin("Serve", speed),
@@ -61,13 +72,16 @@ class EventDetector:
             event_type = "Fault" if (is_out and self.rally_count <= 1) else ("Bounce" if not is_out else "Out")
             result_str = "Fault" if is_out else "In Play"
 
+            p_id = self.last_hit_player or "Player 1"
             triggered_event = {
                 "event_id": f"evt_{frame_idx}",
                 "timestamp_sec": round(timestamp, 2),
                 "frame_idx": frame_idx,
-                "player": self.last_hit_player or "Player 1",
+                "player": p_id,
+                "player_id": p_id,
                 "event_type": event_type,
                 "stroke": "Bounce",
+                "stroke_type": "Bounce",
                 "speed_kmh": ball_info["speed_kmh"],
                 "ball_height_m": 0.0,
                 "spin": "None",
@@ -78,15 +92,16 @@ class EventDetector:
             }
 
         # 3. Detect Player Hit / Rally Continuation
-        if self.in_rally and (frame_idx - self.last_hit_frame > 15) and triggered_event is None:
+        if self.in_rally and (frame_idx - self.last_hit_frame > 12) and triggered_event is None:
+            # Check proximity of ball to active player
             for p in players:
                 p_id = p["player_id"]
-                if p_id != self.last_hit_player:
+                if p_id != self.last_hit_player: # Alternate hit player
                     px, py = p["court_pos_m"]
                     bx, by = ball_info["ball_court_m"]
                     dist = ((px - bx)**2 + (py - by)**2)**0.5
                     
-                    if dist < 2.5:
+                    if dist < 4.5: # Ball within range of player
                         self.rally_count += 1
                         self.last_hit_player = p_id
                         self.last_hit_frame = frame_idx
@@ -100,8 +115,10 @@ class EventDetector:
                             "timestamp_sec": round(timestamp, 2),
                             "frame_idx": frame_idx,
                             "player": p_id,
+                            "player_id": p_id,
                             "event_type": "Hit",
                             "stroke": stroke,
+                            "stroke_type": stroke,
                             "speed_kmh": ball_info["speed_kmh"],
                             "ball_height_m": ball_info["height_m"],
                             "spin": stroke_classifier.estimate_spin(stroke, ball_info["speed_kmh"]),

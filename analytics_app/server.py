@@ -188,6 +188,9 @@ class AnalyticsHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def serve_video(self):
         video_paths = [
+            os.path.join(BASE_DIR, "ashwani_pallavi_game.mp4"),
+            os.path.join(OUTPUT_DIR, "ashwani_pallavi_game.mp4"),
+            os.path.join(MODULE_DIR, "ashwani_pallavi_game.mp4"),
             os.path.join(BASE_DIR, "match2.mp4"),
             os.path.join(OUTPUT_DIR, "match2.mp4"),
             os.path.join(MODULE_DIR, "match2.mp4")
@@ -199,7 +202,7 @@ class AnalyticsHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 break
 
         if not video_path:
-            self.send_error(404, "match2.mp4 video file not found on server")
+            self.send_error(404, "ashwani_pallavi_game.mp4 video file not found on server")
             return
 
         file_size = os.path.getsize(video_path)

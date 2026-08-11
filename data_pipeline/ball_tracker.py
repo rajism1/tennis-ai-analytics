@@ -15,12 +15,17 @@ class BallTracker:
         self.trajectory_court = deque(maxlen=track_buffer)
         self.timestamps = deque(maxlen=track_buffer)
         
+        # State tracking
         self.current_speed_kmh = 0.0
-        self.current_height_m = 0.8
+        self.current_height_m = 0.8  # Default estimated height off ground in meters
         self.is_bounce_frame = False
         self.bounce_location_m = None
 
     def track_ball(self, frame, frame_idx, court_detector=None, player_poses=None):
+        """
+        Detects/tracks ball in current frame and updates physics state.
+        Returns dict containing ball status.
+        """
         ball_pt_px = self._detect_ball_blob(frame, player_poses)
         
         timestamp = frame_idx / self.fps
@@ -31,20 +36,26 @@ class BallTracker:
             self.trajectory_pixel.append(ball_pt_px)
             self.timestamps.append(timestamp)
             
+            # Map pixel -> court meters
             raw_court_m = (0.0, 0.0)
             if court_detector is not None:
                 raw_court_m = court_detector.pixel_to_court(ball_pt_px)
 
+            # 1. Height Elevation Parallax Offset Adjustment
+            # Estimated height z reduces apparent projection error when ball is in air
             est_z = max(0.0, float(1.8 - (ball_pt_px[1] % 100) / 80.0))
             self.current_height_m = round(est_z, 2)
             
+            # Parallax correction vector toward court center (5.48, 11.88)
             cx, cy = 5.48, 11.885
             dx, dy = raw_court_m[0] - cx, raw_court_m[1] - cy
+            # Correct elevation shift factor
             corr_factor = max(0.85, 1.0 - (est_z * 0.04))
             corrected_court_m = (cx + dx * corr_factor, cy + dy * corr_factor)
 
             self.trajectory_court.append(corrected_court_m)
 
+            # 2. Moving Window Smoothing over Court Trajectory (5-frame window)
             smooth_court_m = corrected_court_m
             if len(self.trajectory_court) >= 5:
                 recent_pts = list(self.trajectory_court)[-5:]
@@ -52,7 +63,9 @@ class BallTracker:
                 avg_y = float(np.mean([p[1] for p in recent_pts]))
                 smooth_court_m = (avg_x, avg_y)
 
+            # 3. Robust Velocity Calculation with Clamping (Max ~235 km/h)
             if len(self.trajectory_court) >= 4 and len(self.timestamps) >= 4:
+                # 4-frame window distance delta
                 p1 = np.array(list(self.trajectory_court)[-1])
                 p0 = np.array(list(self.trajectory_court)[-4])
                 dt = self.timestamps[-1] - self.timestamps[-4]
@@ -60,9 +73,12 @@ class BallTracker:
                 if dt > 0:
                     dist_meters = np.linalg.norm(p1 - p0)
                     raw_speed_ms = dist_meters / dt
-                    calc_speed_kmh = float(raw_speed_ms * 3.6)
+                    calc_speed_kmh = float(raw_speed_ms * 3.6) # m/s -> km/h
+
+                    # Physical Limits: Cap max realistic speed to 235 km/h
                     calc_speed_kmh = min(235.0, calc_speed_kmh)
 
+                    # Smooth speed transitions (max 35 km/h jump per frame)
                     if hasattr(self, "prev_speed_kmh") and self.prev_speed_kmh > 0:
                         max_jump = 35.0
                         clamped_speed = np.clip(calc_speed_kmh, self.prev_speed_kmh - max_jump, self.prev_speed_kmh + max_jump)
@@ -72,10 +88,11 @@ class BallTracker:
 
                     self.prev_speed_kmh = self.current_speed_kmh
 
+            # Bounce Detection Algorithm: Inflection point in Y trajectory (court space)
             if len(self.trajectory_court) >= 5:
                 y_coords = [pt[1] for pt in list(self.trajectory_court)[-5:]]
                 dy = np.diff(y_coords)
-                if len(dy) >= 3 and (dy[-2] > 0 and dy[-1] < 0):
+                if len(dy) >= 3 and (dy[-2] > 0 and dy[-1] < 0): # Direction peak/inflection
                     self.is_bounce_frame = True
                     self.bounce_location_m = self.trajectory_court[-2]
 
@@ -89,15 +106,23 @@ class BallTracker:
         }
 
     def _detect_ball_blob(self, frame, player_poses=None):
+        """
+        Color/motion blob thresholding for tennis ball detection (Yellow-Green hue).
+        Optimized with 0.5x pre-scaling for 4x faster OpenCV color mask execution.
+        """
         h, w, _ = frame.shape
         scale = 0.5
         small_frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
         
         hsv = cv2.cvtColor(small_frame, cv2.COLOR_BGR2HSV)
+        
+        # Tennis ball yellow-green HSV range
         lower_yellow = np.array([25, 80, 100])
         upper_yellow = np.array([55, 255, 255])
         
         mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+        
+        # Mask out top-left scoreboard zone
         sh, sw = small_frame.shape[:2]
         mask[:int(sh * 0.35), :int(sw * 0.28)] = 0
         
@@ -111,12 +136,15 @@ class BallTracker:
             if min_size <= area <= max_size * 5:
                 (x, y), radius = cv2.minEnclosingCircle(cnt)
                 if min_size <= radius <= max_size:
+                    # Rescale coordinates back to full image dimensions
                     best_pt = (float(x / scale), float(y / scale))
                     break
 
         return best_pt
 
     def draw_ball(self, frame, ball_info):
+        """Draws ball marker, motion trail, and speed overlay."""
+        # Draw trajectory trail (only for close consecutive frames)
         pts = list(self.trajectory_pixel)
         for i in range(1, len(pts)):
             if pts[i - 1] is not None and pts[i] is not None:
@@ -124,6 +152,7 @@ class BallTracker:
                 p2 = np.array(pts[i])
                 dist = np.linalg.norm(p2 - p1)
                 
+                # Only draw line segment if frames are consecutive and distance < 70 pixels (no teleports/jumps across screen)
                 if dist < 70.0:
                     thickness = max(1, int(np.sqrt(15 / float(i + 1)) * 2))
                     cv2.line(frame, (int(pts[i - 1][0]), int(pts[i - 1][1])),
@@ -131,9 +160,11 @@ class BallTracker:
 
         if ball_info["ball_pixel"] is not None:
             bx, by = int(ball_info["ball_pixel"][0]), int(ball_info["ball_pixel"][1])
+            # Draw ball circle
             cv2.circle(frame, (bx, by), 6, (0, 255, 255), -1)
             cv2.circle(frame, (bx, by), 8, (0, 0, 0), 1)
 
+            # Speed banner overlay
             if ball_info['speed_kmh'] > 0:
                 speed_txt = f"{ball_info['speed_kmh']} km/h | H: {ball_info['height_m']}m"
                 cv2.putText(frame, speed_txt, (bx + 12, by - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 2)

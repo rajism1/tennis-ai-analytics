@@ -105,22 +105,21 @@ def run_tennis_pipeline(video_source, json_output_path=None, output_video_path=N
             event["snapshot_filename"] = snapshot_filename
             events_list.append(event)
 
-        frame = player_tracker.draw_players(frame, players)
-        frame = pose_estimator.draw_poses(frame, poses)
-        frame = ball_tracker.draw_ball(frame, ball_info)
-        
-        player_court_positions = [p["court_pos_m"] for p in players]
-        frame = court_detector.draw_minimap(
-            frame, 
-            player_positions=player_court_positions, 
-            ball_position=ball_info["ball_court_m"]
-        )
-
-        cv2.rectangle(frame, (10, 10), (350, 70), (0, 0, 0), -1)
-        cv2.putText(frame, f"Frame: {frame_idx} | Rally: {event_detector.rally_count}", (20, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
-        cv2.putText(frame, f"Ball Speed: {ball_info['speed_kmh']} km/h", (20, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
-
         if writer is not None:
+            frame = player_tracker.draw_players(frame, players)
+            frame = pose_estimator.draw_poses(frame, poses)
+            frame = ball_tracker.draw_ball(frame, ball_info)
+            
+            player_court_positions = [p["court_pos_m"] for p in players]
+            frame = court_detector.draw_minimap(
+                frame, 
+                player_positions=player_court_positions, 
+                ball_position=ball_info["ball_court_m"]
+            )
+
+            cv2.rectangle(frame, (10, 10), (350, 70), (0, 0, 0), -1)
+            cv2.putText(frame, f"Frame: {frame_idx} | Rally: {event_detector.rally_count}", (20, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
+            cv2.putText(frame, f"Ball Speed: {ball_info['speed_kmh']} km/h", (20, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
             writer.write(frame)
 
         if display:
