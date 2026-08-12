@@ -747,22 +747,25 @@ function drawTennisCourtHeatmap() {
     }
   });
 
-  // 4. Draw Vibrant Neon Tennis Balls at Ball Landing Coordinates
+  // 4. Draw Vibrant Tennis Balls (Yellow for In-Play, Crimson Red for Out/Fault)
   filteredPts.forEach(pt => {
     if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return;
     const px = marginX + pt.x * courtW;
     const py = marginY + pt.y * courtH;
     if (!Number.isFinite(px) || !Number.isFinite(py)) return;
     
-    // Outer black shadow border
+    const isOutOrFault = (pt.result === "Out" || pt.result === "Fault");
+    const ballColor = isOutOrFault ? "#ef4444" : "#facc15";
+
+    // Outer shadow border
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.arc(px, py, 6.5, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Vibrant Yellow Tennis Ball Fill
-    ctx.fillStyle = "#facc15";
+    // Ball Fill
+    ctx.fillStyle = ballColor;
     ctx.beginPath();
     ctx.arc(px, py, 5.5, 0, Math.PI * 2);
     ctx.fill();
@@ -772,6 +775,15 @@ function drawTennisCourtHeatmap() {
     ctx.beginPath();
     ctx.arc(px - 1.5, py - 1.5, 1.8, 0, Math.PI * 2);
     ctx.fill();
+
+    // Out / Net Label tag
+    if (isOutOrFault) {
+      ctx.fillStyle = "#fca5a5";
+      ctx.font = "bold 9px Inter, sans-serif";
+      ctx.textAlign = "center";
+      const tagText = pt.result === "Fault" ? "NET" : "OUT";
+      ctx.fillText(tagText, px, py - 9);
+    }
   });
 
   // 5. Draw On-Court Zone Telemetry Overlay Labels

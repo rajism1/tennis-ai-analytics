@@ -204,14 +204,10 @@ class AnalyticsEngine:
             try:
                 val_x = float(mx)
                 val_y = float(my)
-                if val_x < 0 or val_x > 10.97:
-                    val_x = abs(val_x) % 10.97
-                if val_y < 0 or val_y > 23.77:
-                    val_y = abs(val_y) % 23.77
                 
-                # Horizontal length (X = 1 - val_y / 23.77), Vertical width (Y = val_x / 10.97)
-                nx = float(np.clip(1.0 - (val_y / 23.77), 0.08, 0.92))
-                ny = float(np.clip(val_x / 10.97, 0.12, 0.88))
+                # Allow out-of-bounds coordinates beyond inner court lines
+                nx = float(np.clip(1.0 - (val_y / 23.77), 0.02, 0.98))
+                ny = float(np.clip(val_x / 10.97, 0.03, 0.97))
                 return (round(nx, 3), round(ny, 3))
             except (ValueError, TypeError):
                 return (0.5, 0.5)
@@ -225,17 +221,18 @@ class AnalyticsEngine:
             pos = row.get("court_position_meters", None)
             land = row.get("landing_court_position_meters", None)
             stroke = str(row.get("stroke", "Hit"))
+            res_str = str(row.get("result", "In Play"))
 
             pos_valid = isinstance(pos, (list, tuple, np.ndarray)) and len(pos) == 2 and not any(pd.isna(x) for x in pos)
             land_valid = isinstance(land, (list, tuple, np.ndarray)) and len(land) == 2 and not any(pd.isna(x) for x in land)
 
             if pos_valid:
                 c = normalize_m_to_court(pos[0], pos[1])
-                hit_coords.append({"x": c[0], "y": c[1], "stroke": stroke})
+                hit_coords.append({"x": c[0], "y": c[1], "stroke": stroke, "result": res_str})
 
             if land_valid:
                 c = normalize_m_to_court(land[0], land[1])
-                landing_coords.append({"x": c[0], "y": c[1], "stroke": stroke})
+                landing_coords.append({"x": c[0], "y": c[1], "stroke": stroke, "result": res_str})
 
                 if c[0] <= 0.5:
                     ad_bounce_cnt += 1
