@@ -121,6 +121,36 @@ function setupEventListeners() {
   const hmLandBtn = document.getElementById("hm-mode-land");
   const hmFilter = document.getElementById("hm-filter-stroke");
 
+  const hmResAll = document.getElementById("hm-res-all");
+  const hmResIn = document.getElementById("hm-res-in");
+  const hmResOut = document.getElementById("hm-res-out");
+
+  if (hmResAll && hmResIn && hmResOut) {
+    hmResAll.addEventListener("click", () => {
+      currentHeatmapResultFilter = "ALL";
+      hmResAll.classList.add("btn-primary");
+      hmResIn.classList.remove("btn-primary");
+      hmResOut.classList.remove("btn-primary");
+      drawTennisCourtHeatmap();
+    });
+
+    hmResIn.addEventListener("click", () => {
+      currentHeatmapResultFilter = "IN";
+      hmResIn.classList.add("btn-primary");
+      hmResAll.classList.remove("btn-primary");
+      hmResOut.classList.remove("btn-primary");
+      drawTennisCourtHeatmap();
+    });
+
+    hmResOut.addEventListener("click", () => {
+      currentHeatmapResultFilter = "OUT";
+      hmResOut.classList.add("btn-primary");
+      hmResAll.classList.remove("btn-primary");
+      hmResIn.classList.remove("btn-primary");
+      drawTennisCourtHeatmap();
+    });
+  }
+
   if (hmHitBtn && hmLandBtn) {
     hmHitBtn.addEventListener("click", () => {
       currentHeatmapMode = "hit";
@@ -625,6 +655,7 @@ function renderPlayerAnalyticsUI(data) {
 // 2D Court Heatmap Renderer
 let currentHeatmapData = null;
 let currentHeatmapMode = "land"; // "land" (Ball Placement Landing Frequency) as default mode
+let currentHeatmapResultFilter = "ALL"; // "ALL", "IN", "OUT"
 
 function renderHeatmapSection(data) {
   currentHeatmapData = data;
@@ -718,7 +749,18 @@ function drawTennisCourtHeatmap() {
   }
 
   const strokeFilter = document.getElementById("hm-filter-stroke") ? document.getElementById("hm-filter-stroke").value : "ALL";
-  let filteredPts = points.filter(p => strokeFilter === "ALL" || p.stroke === strokeFilter);
+  let filteredPts = points.filter(p => {
+    if (!p) return false;
+    const strokeOk = (strokeFilter === "ALL" || p.stroke === strokeFilter);
+    const res = p.result || "In Play";
+    let resultOk = true;
+    if (currentHeatmapResultFilter === "IN") {
+      resultOk = (res === "In Play");
+    } else if (currentHeatmapResultFilter === "OUT") {
+      resultOk = (res === "Out" || res === "Fault");
+    }
+    return strokeOk && resultOk;
+  });
   let totalCount = filteredPts.length;
 
   // 3. Draw Radial Heat Density Spots
@@ -802,9 +844,42 @@ function drawTennisCourtHeatmap() {
   if (badge) {
     const pName = (currentHeatmapData && currentHeatmapData.player) ? currentHeatmapData.player : "Player";
     const modeStr = currentHeatmapMode === "land" ? "LANDINGS" : "HITS";
-    badge.innerText = `✅ TELEMETRY READY - ${totalCount} BALL ${modeStr} (${pName.toUpperCase()})`;
-    badge.style.background = "rgba(56, 189, 248, 0.15)";
-    badge.style.color = "#38bdf8";
+    let filterLabel = "ALL SHOTS";
+    if (currentHeatmapResultFilter === "IN") filterLabel = "IN-PLAY SHOTS ONLY";
+    if (currentHeatmapResultFilter === "OUT") filterLabel = "POINT-LOSING ERRORS (OUT/FAULTS)";
+    
+    badge.innerText = `🔍 ${filterLabel} - ${totalCount} ${modeStr} (${pName.toUpperCase()})`;
+    if (currentHeatmapResultFilter === "OUT") {
+      badge.style.background = "rgba(239, 68, 68, 0.2)";
+      badge.style.color = "#f87171";
+    } else if (currentHeatmapResultFilter === "IN") {
+      badge.style.background = "rgba(34, 197, 94, 0.2)";
+      badge.style.color = "#4ade80";
+    } else {
+      badge.style.background = "rgba(56, 189, 248, 0.15)";
+      badge.style.color = "#38bdf8";
+    }
+  }
+
+  // 7. Dynamic Tactical Insights Error Breakdown
+  const dominantBadge = document.getElementById("badge-val-dominant");
+  const weaknessBadge = document.getElementById("badge-val-weakness");
+  const usageBadge = document.getElementById("badge-val-usage");
+  
+  if (currentHeatmapResultFilter === "OUT") {
+    const netErrs = filteredPts.filter(p => p.result === "Fault").length;
+    const outErrs = filteredPts.filter(p => p.result === "Out").length;
+    const fhErrs = filteredPts.filter(p => p.stroke === "Forehand").length;
+    const bhErrs = filteredPts.filter(p => p.stroke === "Backhand").length;
+    
+    if (dominantBadge) dominantBadge.innerText = `${netErrs} Net / ${outErrs} Out`;
+    if (weaknessBadge) weaknessBadge.innerText = fhErrs >= bhErrs ? `Forehand (${fhErrs} errors)` : `Backhand (${bhErrs} errors)`;
+    if (usageBadge) usageBadge.innerText = `${totalCount} Total Errors`;
+  } else if (currentHeatmapData && currentHeatmapData.tactical_insights) {
+    const ti = currentHeatmapData.tactical_insights;
+    if (dominantBadge) dominantBadge.innerText = ti.dominant_zone || "Deuce Baseline";
+    if (weaknessBadge) weaknessBadge.innerText = ti.target_weakness || "Deep Ad Corner";
+    if (usageBadge) usageBadge.innerText = ti.ball_usage || "Deep Baseline 100%";
   }
 }
 
