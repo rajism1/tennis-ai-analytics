@@ -829,15 +829,30 @@ function drawTennisCourtHeatmap() {
   });
 
   // 5. Draw On-Court Zone Telemetry Overlay Labels
-  ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-  ctx.font = "bold 10px Inter, sans-serif";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+  ctx.font = "bold 11px Inter, sans-serif";
   ctx.textAlign = "center";
   
   const nearCnt = filteredPts.filter(p => p.x <= 0.5).length;
   const farCnt = filteredPts.filter(p => p.x > 0.5).length;
   
-  ctx.fillText(`NEAR COURT: ${nearCnt} Bounces`, marginX + courtW * 0.25, marginY + 18);
-  ctx.fillText(`FAR COURT: ${farCnt} Bounces`, marginX + courtW * 0.75, marginY + 18);
+  if (currentHeatmapResultFilter === "OUT") {
+    const netCount = filteredPts.filter(p => p.result === "Fault").length;
+    const outCount = filteredPts.filter(p => p.result === "Out").length;
+    ctx.fillText(`NET FAULTS: ${netCount} ERRORS`, marginX + courtW * 0.25, marginY + 18);
+    ctx.fillText(`OUT OF BOUNDS: ${outCount} ERRORS`, marginX + courtW * 0.75, marginY + 18);
+    
+    // Bottom Total Error Summary Banner
+    ctx.fillStyle = "#fca5a5";
+    ctx.font = "bold 11px Inter, sans-serif";
+    ctx.fillText(`TOTAL POINT-LOSING ERRORS SHOWN: ${filteredPts.length} ERRORS (${netCount} NET + ${outCount} OUT)`, marginX + courtW * 0.5, marginY + courtH - 10);
+  } else if (currentHeatmapResultFilter === "IN") {
+    ctx.fillText(`NEAR COURT: ${nearCnt} IN-PLAY LANDINGS`, marginX + courtW * 0.25, marginY + 18);
+    ctx.fillText(`FAR COURT: ${farCnt} IN-PLAY LANDINGS`, marginX + courtW * 0.75, marginY + 18);
+  } else {
+    ctx.fillText(`NEAR COURT: ${nearCnt} BOUNCES`, marginX + courtW * 0.25, marginY + 18);
+    ctx.fillText(`FAR COURT: ${farCnt} BOUNCES`, marginX + courtW * 0.75, marginY + 18);
+  }
 
   // 6. Update Onscreen status indicator
   const badge = document.querySelector(".stepper-badge");
