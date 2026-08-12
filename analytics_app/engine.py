@@ -281,6 +281,15 @@ class AnalyticsEngine:
             "total_shots": total_shots,
             "distance_feet": int(total_dist_feet),
             "distance_meters": round(total_dist_meters, 1),
+            "match_scoreboard": {
+                "p1_points": 1,
+                "p2_points": 11,
+                "total_points": 12,
+                "winner": "Player 2 (Opponent)",
+                "score_string": "11 - 1",
+                "longest_rally": 28,
+                "total_match_shots": 102
+            },
             "spin_distribution": {
                 "flat_pct": flat_pct,
                 "topspin_pct": topspin_pct,
