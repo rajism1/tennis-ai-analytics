@@ -98,7 +98,7 @@ class AnalyticsEngine:
             return self._empty_analytics_response(target_player)
 
         # 4. Movement Distance (Feet & Meters for target_player ONLY)
-        raw_player_events = df[df['player'] == target_player]
+        raw_player_events = df[(df['player'] == target_player) & (df['stroke'] != 'Bounce')]
         total_dist_meters = 0.0
         player_coords = []
         for _, row in raw_player_events.iterrows():
@@ -110,7 +110,7 @@ class AnalyticsEngine:
             p1 = np.array(player_coords[i-1])
             p2 = np.array(player_coords[i])
             d = np.linalg.norm(p2 - p1)
-            if 0.1 <= d <= 12.0:
+            if 0.1 <= d <= 15.0:
                 total_dist_meters += d
 
         total_dist_feet = total_dist_meters * 3.28084
@@ -159,46 +159,42 @@ class AnalyticsEngine:
         # 8. Shots In % and Match Duration Pace
         in_shots = player_df[~player_df["result"].isin(["Out", "Fault"])] if "result" in player_df else player_df
         shots_in_pct = round((len(in_shots) / max(1, total_shots)) * 100, 1)
+        match_duration_sec = df["timestamp_sec"].max() - df["timestamp_sec"].min() if "timestamp_sec" in df else 300
+        shots_per_hour = int((total_shots / max(1, match_duration_sec)) * 3600)
 
-        match_duration_sec = 342.0
-        shots_per_hour = int((total_shots / match_duration_sec) * 3600)
+        # 9. Serve Analytics
+        serves_df = player_df[player_df["stroke"] == "Serve"]
+        ad_serves = serves_df[serves_df["court_position_meters"].apply(lambda p: isinstance(p, (list, tuple, np.ndarray)) and len(p) == 2 and p[0] <= 5.48)]
+        deuce_serves = serves_df[serves_df["court_position_meters"].apply(lambda p: isinstance(p, (list, tuple, np.ndarray)) and len(p) == 2 and p[0] > 5.48)]
 
-        # 9. Serves (Ad vs Deuce) with Outlier Filtering
-        serves_df = player_df[player_df["stroke"] == "Serve"].copy()
-        ad_serves, deuce_serves = [], []
-        
-        for _, row in serves_df.iterrows():
-            pos = row.get("landing_court_position_meters", [0, 0])
-            if pos and len(pos) == 2:
-                if pos[0] < 5.48:
-                    ad_serves.append(row)
-                else:
-                    deuce_serves.append(row)
+        ad_serves_in = ad_serves[~ad_serves["result"].isin(["Out", "Fault"])] if "result" in ad_serves else ad_serves
+        deuce_serves_in = deuce_serves[~deuce_serves["result"].isin(["Out", "Fault"])] if "result" in deuce_serves else deuce_serves
 
-        ad_df = pd.DataFrame(ad_serves) if len(ad_serves) > 0 else pd.DataFrame()
-        deuce_df = pd.DataFrame(deuce_serves) if len(deuce_serves) > 0 else pd.DataFrame()
+        ad_serves_in_pct = round((len(ad_serves_in) / max(1, len(ad_serves))) * 100, 1) if len(ad_serves) > 0 else 0.0
+        deuce_serves_in_pct = round((len(deuce_serves_in) / max(1, len(deuce_serves))) * 100, 1) if len(deuce_serves) > 0 else 0.0
 
-        ad_serves_in_pct = round((len(ad_df[~ad_df["result"].isin(["Fault", "Out"])]) / max(1, len(ad_df)) * 100), 1) if len(ad_df) > 0 else 0.0
-        deuce_serves_in_pct = round((len(deuce_df[~deuce_df["result"].isin(["Fault", "Out"])]) / max(1, len(deuce_df)) * 100), 1) if len(deuce_df) > 0 else 0.0
+        ad_spd = ad_serves[(ad_serves["speed_mph"] >= 25.0) & (ad_serves["speed_mph"] <= 115.0)]["speed_mph"]
+        deuce_spd = deuce_serves[(deuce_serves["speed_mph"] >= 25.0) & (deuce_serves["speed_mph"] <= 115.0)]["speed_mph"]
 
-        ad_valid_spd = ad_df[(ad_df['speed_mph']>=25.0)&(ad_df['speed_mph']<=115.0)]['speed_mph'] if len(ad_df) > 0 and 'speed_mph' in ad_df else pd.Series()
-        deuce_valid_spd = deuce_df[(deuce_df['speed_mph']>=25.0)&(deuce_df['speed_mph']<=115.0)]['speed_mph'] if len(deuce_df) > 0 and 'speed_mph' in deuce_df else pd.Series()
+        ad_avg_serve_speed_mph = round(float(ad_spd.mean()), 1) if len(ad_spd) > 0 else 0.0
+        deuce_avg_serve_speed_mph = round(float(deuce_spd.mean()), 1) if len(deuce_spd) > 0 else 0.0
 
-        ad_avg_serve_speed_mph = round(float(ad_valid_spd.mean()), 1) if len(ad_valid_spd) > 0 else 0.0
-        deuce_avg_serve_speed_mph = round(float(deuce_valid_spd.mean()), 1) if len(deuce_valid_spd) > 0 else 0.0
+        # 10. Groundstroke Analytics
+        fh_df = player_df[player_df["stroke"] == "Forehand"]
+        bh_df = player_df[player_df["stroke"] == "Backhand"]
 
-        # 10. Groundstrokes (Forehand vs Backhand) with Outlier Filtering
-        fh_df = player_df[player_df["stroke"] == "Forehand"].copy()
-        bh_df = player_df[player_df["stroke"] == "Backhand"].copy()
+        fh_in = fh_df[~fh_df["result"].isin(["Out", "Fault"])] if "result" in fh_df else fh_df
+        bh_in = bh_df[~bh_df["result"].isin(["Out", "Fault"])] if "result" in bh_df else bh_df
 
-        fh_in_pct = round((len(fh_df[~fh_df["result"].isin(["Out"])]) / max(1, len(fh_df))) * 100, 1) if len(fh_df) > 0 else 0.0
-        bh_in_pct = round((len(bh_df[~bh_df["result"].isin(["Out"])]) / max(1, len(bh_df))) * 100, 1) if len(bh_df) > 0 else 0.0
+        fh_in_pct = round((len(fh_in) / max(1, len(fh_df))) * 100, 1) if len(fh_df) > 0 else 100.0
+        bh_in_pct = round((len(bh_in) / max(1, len(bh_df))) * 100, 1) if len(bh_df) > 0 else 100.0
+        overall_in_pct = round(((len(fh_in) + len(bh_in)) / max(1, len(fh_df) + len(bh_df))) * 100, 1) if (len(fh_df) + len(bh_df)) > 0 else 100.0
 
-        fh_valid_spd = fh_df[(fh_df['speed_mph']>=25.0)&(fh_df['speed_mph']<=115.0)]['speed_mph'] if len(fh_df) > 0 else pd.Series()
-        bh_valid_spd = bh_df[(bh_df['speed_mph']>=25.0)&(bh_df['speed_mph']<=115.0)]['speed_mph'] if len(bh_df) > 0 else pd.Series()
+        fh_spd = fh_df[(fh_df["speed_mph"] >= 25.0) & (fh_df["speed_mph"] <= 115.0)]["speed_mph"]
+        bh_spd = bh_df[(bh_df["speed_mph"] >= 25.0) & (bh_df["speed_mph"] <= 115.0)]["speed_mph"]
 
-        fh_avg_speed = round(float(fh_valid_spd.mean()), 1) if len(fh_valid_spd) > 0 else avg_speed_mph
-        bh_avg_speed = round(float(bh_valid_spd.mean()), 1) if len(bh_valid_spd) > 0 else avg_speed_mph
+        fh_avg_speed = round(float(fh_spd.mean()), 1) if len(fh_spd) > 0 else avg_speed_mph
+        bh_avg_speed = round(float(bh_spd.mean()), 1) if len(bh_spd) > 0 else avg_speed_mph
 
         # 11. Heatmap Coordinates & Tactical Insights
         hit_coords = []
@@ -213,8 +209,9 @@ class AnalyticsEngine:
                 if val_y < 0 or val_y > 23.77:
                     val_y = abs(val_y) % 23.77
                 
-                nx = float(np.clip(val_x / 10.97, 0.08, 0.92))
-                ny = float(np.clip(val_y / 23.77, 0.08, 0.92))
+                # Horizontal length (X = 1 - val_y / 23.77), Vertical width (Y = val_x / 10.97)
+                nx = float(np.clip(1.0 - (val_y / 23.77), 0.08, 0.92))
+                ny = float(np.clip(val_x / 10.97, 0.12, 0.88))
                 return (round(nx, 3), round(ny, 3))
             except (ValueError, TypeError):
                 return (0.5, 0.5)

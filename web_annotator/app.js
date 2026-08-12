@@ -779,11 +779,11 @@ function drawTennisCourtHeatmap() {
   ctx.font = "bold 10px Inter, sans-serif";
   ctx.textAlign = "center";
   
-  const deuceCnt = filteredPts.filter(p => p.x > 0.5).length;
-  const adCnt = filteredPts.filter(p => p.x <= 0.5).length;
+  const nearCnt = filteredPts.filter(p => p.x <= 0.5).length;
+  const farCnt = filteredPts.filter(p => p.x > 0.5).length;
   
-  ctx.fillText(`DEUCE COURT: ${deuceCnt} Bounces`, marginX + courtW * 0.75, marginY + 18);
-  ctx.fillText(`AD COURT: ${adCnt} Bounces`, marginX + courtW * 0.25, marginY + 18);
+  ctx.fillText(`NEAR COURT: ${nearCnt} Bounces`, marginX + courtW * 0.25, marginY + 18);
+  ctx.fillText(`FAR COURT: ${farCnt} Bounces`, marginX + courtW * 0.75, marginY + 18);
 
   // 6. Update Onscreen status indicator
   const badge = document.querySelector(".stepper-badge");
