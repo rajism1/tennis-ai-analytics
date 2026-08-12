@@ -175,11 +175,14 @@ class AnalyticsEngine:
         ad_serves_in_pct = round((len(ad_serves_in) / max(1, len(ad_serves))) * 100, 1) if len(ad_serves) > 0 else 0.0
         deuce_serves_in_pct = round((len(deuce_serves_in) / max(1, len(deuce_serves))) * 100, 1) if len(deuce_serves) > 0 else 0.0
 
-        ad_spd = ad_serves[(ad_serves["speed_mph"] >= 25.0) & (ad_serves["speed_mph"] <= 115.0)]["speed_mph"]
-        deuce_spd = deuce_serves[(deuce_serves["speed_mph"] >= 25.0) & (deuce_serves["speed_mph"] <= 115.0)]["speed_mph"]
-
-        ad_avg_serve_speed_mph = round(float(ad_spd.mean()), 1) if len(ad_spd) > 0 else 0.0
-        deuce_avg_serve_speed_mph = round(float(deuce_spd.mean()), 1) if len(deuce_spd) > 0 else 0.0
+        if "speed_mph" in serves_df.columns and len(serves_df) > 0:
+            ad_spd = ad_serves[(ad_serves["speed_mph"] >= 25.0) & (ad_serves["speed_mph"] <= 115.0)]["speed_mph"]
+            deuce_spd = deuce_serves[(deuce_serves["speed_mph"] >= 25.0) & (deuce_serves["speed_mph"] <= 115.0)]["speed_mph"]
+            ad_avg_serve_speed_mph = round(float(ad_spd.mean()), 1) if len(ad_spd) > 0 else 0.0
+            deuce_avg_serve_speed_mph = round(float(deuce_spd.mean()), 1) if len(deuce_spd) > 0 else 0.0
+        else:
+            ad_avg_serve_speed_mph = 0.0
+            deuce_avg_serve_speed_mph = 0.0
 
         # 10. Groundstroke Analytics
         fh_df = player_df[player_df["stroke"] == "Forehand"]
@@ -201,30 +204,40 @@ class AnalyticsEngine:
         hit_coords = []
         landing_coords = []
 
-        def normalize_m_to_court(mx, my, is_landing=False):
+        def normalize_m_to_court(mx, my, is_landing=False, res_str="In Play"):
             try:
                 val_x = float(mx)
                 val_y = float(my)
                 
-                # Base normalized court values
-                raw_nx = float(1.0 - (val_y / 23.77))
-                raw_ny = float(val_x / 10.97)
-
                 if is_landing:
-                    # Player 1 hits into Opponent's Far Court (Right Canvas: nx >= 0.50)
-                    # Player 2 hits into Player 1's Near Court (Left Canvas: nx <= 0.50)
-                    if target_player == "Player 1":
-                        nx = float(np.clip(0.52 + (abs(val_y) % 11.88) / 28.0, 0.52, 0.95))
+                    if res_str == "Fault":
+                        nx = 0.50
+                        ny = float(np.clip(val_x / 10.97, 0.10, 0.90))
+                    elif res_str == "Out":
+                        if val_y > 24.0 or val_y < 0.0:
+                            nx = 0.98 if target_player == "Player 1" else 0.02
+                            ny = float(np.clip(val_x / 10.97, 0.08, 0.92))
+                        elif val_x < 0.0 or val_x > 10.97:
+                            nx = 0.75 if target_player == "Player 1" else 0.25
+                            ny = 0.03 if val_x < 0.0 else 0.97
+                        else:
+                            nx = 0.97 if target_player == "Player 1" else 0.03
+                            ny = float(np.clip(val_x / 10.97, 0.05, 0.95))
                     else:
-                        nx = float(np.clip(0.48 - (abs(val_y) % 11.88) / 28.0, 0.05, 0.48))
+                        # In Play shots inside court bounds
+                        if target_player == "Player 1":
+                            nx = float(np.clip(0.55 + (val_y / 23.77) * 0.38, 0.54, 0.92))
+                        else:
+                            nx = float(np.clip(0.45 - (val_y / 23.77) * 0.38, 0.08, 0.46))
+                        ny = float(np.clip(val_x / 10.97, 0.12, 0.88))
                 else:
                     # Hitting positions
                     if target_player == "Player 1":
                         nx = float(np.clip(0.08 + (abs(val_y) % 5.0) / 20.0, 0.05, 0.45))
                     else:
                         nx = float(np.clip(0.92 - (abs(val_y) % 5.0) / 20.0, 0.55, 0.95))
+                    ny = float(np.clip(val_x / 10.97, 0.05, 0.95))
 
-                ny = float(np.clip(raw_ny, 0.05, 0.95))
                 return (round(nx, 3), round(ny, 3))
             except (ValueError, TypeError):
                 return (0.75 if (is_landing and target_player == "Player 1") else 0.25, 0.5)
@@ -244,11 +257,11 @@ class AnalyticsEngine:
             land_valid = isinstance(land, (list, tuple, np.ndarray)) and len(land) == 2 and not any(pd.isna(x) for x in land)
 
             if pos_valid:
-                c = normalize_m_to_court(pos[0], pos[1], is_landing=False)
+                c = normalize_m_to_court(pos[0], pos[1], is_landing=False, res_str=res_str)
                 hit_coords.append({"x": c[0], "y": c[1], "stroke": stroke, "result": res_str})
 
             if land_valid:
-                c = normalize_m_to_court(land[0], land[1], is_landing=True)
+                c = normalize_m_to_court(land[0], land[1], is_landing=True, res_str=res_str)
                 landing_coords.append({"x": c[0], "y": c[1], "stroke": stroke, "result": res_str})
 
                 if c[0] <= 0.5:
@@ -273,11 +286,11 @@ class AnalyticsEngine:
                     else:
                         t_serve_cnt += 1
 
-        tot_landings = max(1, len(landing_coords))
-        deep_pct = round((deep_cnt / tot_landings) * 100)
+        total_bounces = max(1, len(landing_coords))
+        deep_pct = round((deep_cnt / total_bounces) * 100)
         mid_pct = 100 - deep_pct
 
-        ad_pct = round((ad_bounce_cnt / tot_landings) * 100)
+        ad_pct = round((ad_bounce_cnt / total_bounces) * 100)
         deuce_pct = 100 - ad_pct
 
         tot_fh = max(1, len(fh_df))
@@ -293,19 +306,29 @@ class AnalyticsEngine:
 
         biomech_payload = self.compute_biomechanics_analytics(target_player=target_player)
 
+        # Dynamic match scoreboard stats
+        p1_errs = len(df[(df["player"] == "Player 1") & (df["result"].isin(["Out", "Fault"]))])
+        p2_errs = len(df[(df["player"] == "Player 2") & (df["result"].isin(["Out", "Fault"]))])
+        
+        tot_pts = max(1, p1_errs + p2_errs)
+        p1_pts = p2_errs  # P1 wins when P2 commits error
+        p2_pts = p1_errs  # P2 wins when P1 commits error
+        
+        winner_name = "Player 1 (Near Court)" if p1_pts > p2_pts else "Player 2 (Opponent)"
+
         return {
             "player": target_player,
             "total_shots": total_shots,
             "distance_feet": int(total_dist_feet),
             "distance_meters": round(total_dist_meters, 1),
             "match_scoreboard": {
-                "p1_points": 1,
-                "p2_points": 11,
-                "total_points": 12,
-                "winner": "Player 2 (Opponent)",
-                "score_string": "11 - 1",
-                "longest_rally": 28,
-                "total_match_shots": 102
+                "p1_points": p1_pts,
+                "p2_points": p2_pts,
+                "total_points": tot_pts,
+                "winner": winner_name,
+                "score_string": f"{p2_pts} - {p1_pts}" if p2_pts > p1_pts else f"{p1_pts} - {p2_pts}",
+                "longest_rally": longest_rally,
+                "total_match_shots": len(strokes_df)
             },
             "spin_distribution": {
                 "flat_pct": flat_pct,
@@ -452,10 +475,7 @@ class AnalyticsEngine:
             res["frame_idx"] = frame_idx
             res["snapshot_filename"] = shot.get("snapshot_filename", f"snapshot_frame_{frame_idx:06d}.jpg")
 
-            # Log debug output for raw feature values and distinct score
-            raw_feats = {f["name"]: f["value"] for f in res.get("features", [])}
-            phase_frames = {p: info["frame_idx"] for p, info in phases.items()}
-            print(f"[BIOMECHANICS DEBUG] Shot #{len(evaluations)+1} ({event_id} @ frame {frame_idx}): Score={res['overall_score']}, PhaseFrames={phase_frames}, Features={raw_feats}, Faults={res['fault_tags']}")
+            # print(f"[BIOMECHANICS DEBUG] Shot #{len(evaluations)+1} ({event_id} @ frame {frame_idx}): Score={res['overall_score']}, PhaseFrames={phase_frames}, Features={raw_feats}, Faults={res['fault_tags']}")
 
             evaluations.append(res)
 
