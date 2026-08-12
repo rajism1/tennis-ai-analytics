@@ -294,7 +294,7 @@
           <span class="card-status-tag" style="background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4);">MATCH CONCLUDED</span>
         </div>
         <div style="font-size: 13px; color: var(--text-muted); font-weight: 600;">
-          TOTAL POINTS PLAYED: <strong style="color: #38bdf8;">12 POINTS</strong>
+          TOTAL POINTS PLAYED: <strong style="color: #38bdf8;" id="sc-total-points">12 POINTS</strong>
         </div>
       </div>
 
@@ -304,7 +304,7 @@
           <div style="width: 44px; height: 44px; border-radius: 50%; background: #38bdf8; color: #000; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center;">P1</div>
           <div style="flex: 1;">
             <div style="font-size: 15px; font-weight: 700; color: #fff;">Player 1 (Near Court)</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">59 Shots Played &bull; 48 In-Play</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="sc-p1-shots">43 Shots Played &bull; 32 In-Play</div>
           </div>
           <div style="font-size: 32px; font-weight: 900; color: #f87171;" id="score-val-p1">1</div>
         </div>
@@ -312,7 +312,7 @@
         <!-- VS Divider / Score Badge -->
         <div style="text-align: center;">
           <div style="font-size: 24px; font-weight: 900; color: var(--text-muted); letter-spacing: 2px;">VS</div>
-          <div style="font-size: 11px; color: #facc15; font-weight: 700; margin-top: 4px; background: rgba(250, 204, 21, 0.15); padding: 3px 10px; border-radius: 12px; border: 1px solid rgba(250, 204, 21, 0.3);">11 - 1</div>
+          <div style="font-size: 11px; color: #facc15; font-weight: 700; margin-top: 4px; background: rgba(250, 204, 21, 0.15); padding: 3px 10px; border-radius: 12px; border: 1px solid rgba(250, 204, 21, 0.3);" id="sc-score-badge">11 - 1</div>
         </div>
 
         <!-- Player 2 Score Block (Winner) -->
@@ -320,7 +320,7 @@
           <div style="font-size: 32px; font-weight: 900; color: #4ade80;" id="score-val-p2">11</div>
           <div style="flex: 1; text-align: right;">
             <div style="font-size: 15px; font-weight: 700; color: #4ade80;">Player 2 (Opponent) 👑</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">43 Shots Played &bull; 42 In-Play</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="sc-p2-shots">25 Shots Played &bull; 24 In-Play</div>
           </div>
           <div style="width: 44px; height: 44px; border-radius: 50%; background: #4ade80; color: #000; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center;">P2</div>
         </div>
@@ -328,9 +328,9 @@
 
       <!-- Bottom Telemetry Chips -->
       <div style="display: flex; gap: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.05); font-size: 12px; color: var(--text-muted);">
-        <span style="background: rgba(255, 255, 255, 0.05); padding: 4px 10px; border-radius: 6px;">🎾 Total Shots: <strong>102 Shots</strong></span>
-        <span style="background: rgba(255, 255, 255, 0.05); padding: 4px 10px; border-radius: 6px;">⚡ Longest Rally: <strong>28 Shots (Point 9)</strong></span>
-        <span style="background: rgba(255, 255, 255, 0.05); padding: 4px 10px; border-radius: 6px;">🔥 Match Winner: <strong style="color: #4ade80;">Player 2 (Far Court)</strong></span>
+        <span style="background: rgba(255, 255, 255, 0.05); padding: 4px 10px; border-radius: 6px;">🎾 Total Shots: <strong id="sc-chip-total-shots">68 Shots</strong></span>
+        <span style="background: rgba(255, 255, 255, 0.05); padding: 4px 10px; border-radius: 6px;">⚡ Longest Rally: <strong id="sc-chip-longest-rally">12 Shots (Point 6)</strong></span>
+        <span style="background: rgba(255, 255, 255, 0.05); padding: 4px 10px; border-radius: 6px;">🔥 Match Winner: <strong style="color: #4ade80;" id="sc-chip-winner">Player 2 (Far Court)</strong></span>
       </div>
     </div>
 

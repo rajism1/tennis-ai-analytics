@@ -480,6 +480,7 @@ async function loadPlayerAnalytics(playerId = "Player 1", forceRefresh = false) 
     if (elP2) elP2.innerText = `👟 ${dataP2.distance_feet} ft | ${dataP2.total_shots} shots`;
 
     const cachedData = analyticsCache[playerId] || analyticsCache["Player 1"];
+    updateMatchScoreboardCard(analyticsCache["Player 1"], analyticsCache["Player 2"]);
     renderPlayerAnalyticsUI(cachedData);
     hideAnalyticsLoader();
     return;
@@ -514,6 +515,8 @@ async function loadPlayerAnalytics(playerId = "Player 1", forceRefresh = false) 
     const elP2 = document.getElementById("p2-dist-txt");
     if (elP2) elP2.innerText = `👟 ${dataP2.distance_feet} ft | ${dataP2.total_shots} shots`;
 
+    updateMatchScoreboardCard(dataP1, dataP2);
+
     const targetData = playerId === "Player 2" ? dataP2 : dataP1;
     renderPlayerAnalyticsUI(targetData);
     hideAnalyticsLoader();
@@ -521,6 +524,27 @@ async function loadPlayerAnalytics(playerId = "Player 1", forceRefresh = false) 
     console.error("Error loading player analytics:", err);
     showAnalyticsError(err.message || "Failed to communicate with python telemetry server");
   }
+}
+
+function updateMatchScoreboardCard(dataP1, dataP2) {
+  if (!dataP1 || !dataP2) return;
+  const sb = dataP1.match_scoreboard || {};
+  
+  setTxt("sc-total-points", `${sb.total_points ?? 12} POINTS`);
+  setTxt("score-val-p1", sb.p1_points ?? 1);
+  setTxt("score-val-p2", sb.p2_points ?? 11);
+  setTxt("sc-score-badge", sb.score_string ?? "11 - 1");
+  
+  const p1In = (dataP1.heatmap?.landing_coords || []).filter(p => p.result === "In Play").length;
+  const p2In = (dataP2.heatmap?.landing_coords || []).filter(p => p.result === "In Play").length;
+  
+  setTxt("sc-p1-shots", `${dataP1.total_shots} Shots Played • ${p1In} In-Play`);
+  setTxt("sc-p2-shots", `${dataP2.total_shots} Shots Played • ${p2In} In-Play`);
+  
+  const totalMatchShots = (dataP1.total_shots ?? 0) + (dataP2.total_shots ?? 0);
+  setTxt("sc-chip-total-shots", `${totalMatchShots} Shots`);
+  setTxt("sc-chip-longest-rally", `${sb.longest_rally ?? 12} Shots (Point 6)`);
+  setTxt("sc-chip-winner", sb.winner ?? "Player 2 (Far Court)");
 }
 
 function setTxt(id, txt) {
